@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowUpDown, Settings, Info, AlertTriangle, TrendingUp } from 'lucide-react';
+import { ArrowUpDown, Settings, Info, AlertTriangle, TrendingUp, Zap } from 'lucide-react';
 import CurrencyInput from './CurrencyInput';
 import SettingsModal from './SettingsModal';
-import { Token, NATIVE_TOKEN, USDT_TOKEN } from '../constants/tokens';
+import { Token, NATIVE_TOKEN, USDT_TOKEN, getTokenByAddress } from '../constants/tokens';
 import { useWeb3 } from '../context/Web3Context';
 import toast from 'react-hot-toast';
 
 const SwapCard: React.FC = () => {
-  const { account, signer, chainId } = useWeb3();
+  const { account, signer, chainId, provider } = useWeb3();
   const [fromToken, setFromToken] = useState<Token>(NATIVE_TOKEN);
   const [toToken, setToToken] = useState<Token>(USDT_TOKEN);
   const [fromAmount, setFromAmount] = useState('');
@@ -21,6 +21,7 @@ const SwapCard: React.FC = () => {
   const [minimumReceived, setMinimumReceived] = useState<string>('');
   const [liquidityProviderFee, setLiquidityProviderFee] = useState<string>('');
   const [routePath, setRoutePath] = useState<string[]>([]);
+  const [isCalculating, setIsCalculating] = useState(false);
 
   // Validate swap parameters
   const validateSwap = () => {
@@ -47,8 +48,8 @@ const SwapCard: React.FC = () => {
     return true;
   };
 
-  // Calculate swap details
-  const calculateSwapDetails = (inputAmount: string) => {
+  // Enhanced swap calculation with better price simulation
+  const calculateSwapDetails = async (inputAmount: string) => {
     if (!inputAmount || parseFloat(inputAmount) <= 0) {
       setToAmount('');
       setPriceImpact(null);
@@ -59,42 +60,96 @@ const SwapCard: React.FC = () => {
       return;
     }
 
-    const amount = parseFloat(inputAmount);
+    setIsCalculating(true);
     
-    // Mock exchange rate calculation (in real app, this would come from DEX)
-    let rate = 1.0;
-    if (fromToken.symbol === 'SUPRA' && toToken.symbol === 'USDT') {
-      rate = 0.85; // 1 SUPRA = 0.85 USDT
-    } else if (fromToken.symbol === 'USDT' && toToken.symbol === 'SUPRA') {
-      rate = 1.18; // 1 USDT = 1.18 SUPRA
-    } else if (fromToken.symbol === 'WSUPRA') {
-      rate = fromToken.symbol === toToken.symbol ? 1.0 : 0.85;
+    try {
+      const amount = parseFloat(inputAmount);
+      
+      // Enhanced mock exchange rate calculation
+      let rate = 1.0;
+      let directPair = true;
+      let path = [fromToken.symbol, toToken.symbol];
+      
+      // Direct pairs
+      if (fromToken.symbol === 'SUPRA' && toToken.symbol === 'USDT') {
+        rate = 0.85;
+      } else if (fromToken.symbol === 'USDT' && toToken.symbol === 'SUPRA') {
+        rate = 1.18;
+      } else if (fromToken.symbol === 'SUPRA' && toToken.symbol === 'USDC') {
+        rate = 0.84;
+      } else if (fromToken.symbol === 'USDC' && toToken.symbol === 'SUPRA') {
+        rate = 1.19;
+      } else if (fromToken.symbol === 'WSUPRA' && toToken.symbol === 'SUPRA') {
+        rate = 1.0;
+      } else if (fromToken.symbol === 'SUPRA' && toToken.symbol === 'WSUPRA') {
+        rate = 1.0;
+      } else if (fromToken.symbol === 'USDT' && toToken.symbol === 'USDC') {
+        rate = 0.999;
+      } else if (fromToken.symbol === 'USDC' && toToken.symbol === 'USDT') {
+        rate = 1.001;
+      } else {
+        // Indirect pairs through SUPRA
+        directPair = false;
+        path = [fromToken.symbol, 'SUPRA', toToken.symbol];
+        
+        // Calculate rate through SUPRA
+        let toSupraRate = 1.0;
+        let fromSupraRate = 1.0;
+        
+        // From token to SUPRA
+        if (fromToken.symbol === 'USDT') toSupraRate = 1.18;
+        else if (fromToken.symbol === 'USDC') toSupraRate = 1.19;
+        else if (fromToken.symbol === 'TOON') toSupraRate = 7.08; // 0.12 USD / 0.85 USD
+        
+        // SUPRA to target token
+        if (toToken.symbol === 'USDT') fromSupraRate = 0.85;
+        else if (toToken.symbol === 'USDC') fromSupraRate = 0.84;
+        else if (toToken.symbol === 'TOON') fromSupraRate = 7.08;
+        
+        rate = toSupraRate * fromSupraRate;
+      }
+
+      // Calculate price impact based on trade size and liquidity
+      let impact = 0;
+      const liquidityMultiplier = directPair ? 1 : 1.5; // Higher impact for indirect pairs
+      
+      if (amount > 10000) impact = 4.5 * liquidityMultiplier;
+      else if (amount > 5000) impact = 3.2 * liquidityMultiplier;
+      else if (amount > 1000) impact = 2.1 * liquidityMultiplier;
+      else if (amount > 500) impact = 1.2 * liquidityMultiplier;
+      else if (amount > 100) impact = 0.8 * liquidityMultiplier;
+      else if (amount > 10) impact = 0.3 * liquidityMultiplier;
+      else impact = 0.1 * liquidityMultiplier;
+
+      // Apply price impact to rate
+      const adjustedRate = rate * (1 - impact / 100);
+      const outputAmount = amount * adjustedRate;
+
+      // Calculate minimum received with slippage
+      const minReceived = outputAmount * (1 - slippage / 100);
+
+      // Calculate LP fee (0.3% for direct pairs, 0.6% for indirect)
+      const feeRate = directPair ? 0.003 : 0.006;
+      const lpFee = amount * feeRate;
+
+      setToAmount(outputAmount.toFixed(6));
+      setPriceImpact(impact);
+      setExchangeRate(adjustedRate);
+      setMinimumReceived(minReceived.toFixed(6));
+      setLiquidityProviderFee(lpFee.toFixed(6));
+      setRoutePath(path);
+      
+    } catch (error) {
+      console.error('Error calculating swap details:', error);
+      setToAmount('');
+      setPriceImpact(null);
+      setExchangeRate(null);
+      setMinimumReceived('');
+      setLiquidityProviderFee('');
+      setRoutePath([]);
+    } finally {
+      setIsCalculating(false);
     }
-
-    // Calculate price impact based on trade size
-    let impact = 0;
-    if (amount > 1000) impact = 3.5;
-    else if (amount > 500) impact = 2.1;
-    else if (amount > 100) impact = 1.2;
-    else if (amount > 10) impact = 0.5;
-    else impact = 0.1;
-
-    // Apply price impact to rate
-    const adjustedRate = rate * (1 - impact / 100);
-    const outputAmount = amount * adjustedRate;
-
-    // Calculate minimum received with slippage
-    const minReceived = outputAmount * (1 - slippage / 100);
-
-    // Calculate LP fee (0.3% standard)
-    const lpFee = amount * 0.003;
-
-    setToAmount(outputAmount.toFixed(6));
-    setPriceImpact(impact);
-    setExchangeRate(adjustedRate);
-    setMinimumReceived(minReceived.toFixed(6));
-    setLiquidityProviderFee(lpFee.toFixed(6));
-    setRoutePath([fromToken.symbol, toToken.symbol]);
   };
 
   // Handle token swap
@@ -111,16 +166,26 @@ const SwapCard: React.FC = () => {
     setTimeout(() => calculateSwapDetails(toAmount), 100);
   };
 
-  // Execute swap
+  // Execute swap with enhanced simulation
   const handleSwap = async () => {
     if (!validateSwap()) return;
 
     setIsLoading(true);
     try {
-      // Simulate transaction delay
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Enhanced transaction simulation
+      toast.loading('Preparing transaction...', { id: 'swap-loading' });
       
-      toast.success(`Successfully swapped ${fromAmount} ${fromToken.symbol} for ${toAmount} ${toToken.symbol}!`);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      toast.loading('Confirming transaction...', { id: 'swap-loading' });
+      
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      toast.dismiss('swap-loading');
+      toast.success(
+        `Successfully swapped ${fromAmount} ${fromToken.symbol} for ${toAmount} ${toToken.symbol}!`,
+        { duration: 5000 }
+      );
       
       // Reset form
       setFromAmount('');
@@ -129,9 +194,11 @@ const SwapCard: React.FC = () => {
       setExchangeRate(null);
       setMinimumReceived('');
       setLiquidityProviderFee('');
+      setRoutePath([]);
       
     } catch (error) {
       console.error('Swap failed:', error);
+      toast.dismiss('swap-loading');
       toast.error('Swap failed. Please try again.');
     } finally {
       setIsLoading(false);
@@ -147,7 +214,7 @@ const SwapCard: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [fromAmount, fromToken, toToken, slippage]);
 
-  const isSwapDisabled = !account || !fromAmount || parseFloat(fromAmount) <= 0 || isLoading;
+  const isSwapDisabled = !account || !fromAmount || parseFloat(fromAmount) <= 0 || isLoading || isCalculating;
 
   return (
     <motion.div
@@ -199,7 +266,6 @@ const SwapCard: React.FC = () => {
           selectedToken={fromToken}
           onTokenChange={setFromToken}
           otherToken={toToken}
-          balance="0.0000"
         />
 
         <div className="flex justify-center">
@@ -207,13 +273,21 @@ const SwapCard: React.FC = () => {
             whileHover={{ scale: 1.1, rotate: 180 }}
             whileTap={{ scale: 0.9 }}
             onClick={handleSwapTokens}
+            disabled={isLoading || isCalculating}
             className="
               p-2 sm:p-3 rounded-xl bg-white/5 hover:bg-white/10
               border border-white/10 transition-all duration-200
-              relative group
+              relative group disabled:opacity-50 disabled:cursor-not-allowed
             "
           >
             <ArrowUpDown className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400 group-hover:text-purple-400" />
+            {isCalculating && (
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 border-2 border-purple-500/30 border-t-purple-500 rounded-xl"
+              />
+            )}
           </motion.button>
         </div>
 
@@ -224,36 +298,48 @@ const SwapCard: React.FC = () => {
           selectedToken={toToken}
           onTokenChange={setToToken}
           otherToken={fromToken}
-          balance="0.0000"
           readOnly
+          showMaxButton={false}
         />
       </div>
 
       {/* Swap Details */}
-      {fromAmount && parseFloat(fromAmount) > 0 && toAmount && (
+      {fromAmount && parseFloat(fromAmount) > 0 && toAmount && !isCalculating && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           className="mt-4 space-y-3"
         >
           {/* Price Impact Warning */}
-          {priceImpact && priceImpact > 2 && (
+          {priceImpact && priceImpact > 1 && (
             <div className={`
               p-3 rounded-xl border flex items-center gap-2
               ${priceImpact > 5 
                 ? 'bg-red-500/10 border-red-500/20' 
+                : priceImpact > 3
+                ? 'bg-orange-500/10 border-orange-500/20'
                 : 'bg-yellow-500/10 border-yellow-500/20'
               }
             `}>
               <AlertTriangle className={`
                 w-4 h-4 flex-shrink-0
-                ${priceImpact > 5 ? 'text-red-400' : 'text-yellow-400'}
+                ${priceImpact > 5 
+                  ? 'text-red-400' 
+                  : priceImpact > 3
+                  ? 'text-orange-400'
+                  : 'text-yellow-400'
+                }
               `} />
               <span className={`
                 text-sm
-                ${priceImpact > 5 ? 'text-red-400' : 'text-yellow-400'}
+                ${priceImpact > 5 
+                  ? 'text-red-400' 
+                  : priceImpact > 3
+                  ? 'text-orange-400'
+                  : 'text-yellow-400'
+                }
               `}>
-                {priceImpact > 5 ? 'High' : 'Medium'} Price Impact: {priceImpact.toFixed(2)}%
+                {priceImpact > 5 ? 'High' : priceImpact > 3 ? 'Medium' : 'Low'} Price Impact: {priceImpact.toFixed(2)}%
               </span>
             </div>
           )}
@@ -290,12 +376,30 @@ const SwapCard: React.FC = () => {
               {routePath.length > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">Route</span>
-                  <span className="text-white font-medium">
+                  <span className="text-white font-medium text-right">
                     {routePath.join(' → ')}
                   </span>
                 </div>
               )}
             </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Loading state for calculations */}
+      {isCalculating && fromAmount && parseFloat(fromAmount) > 0 && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="mt-4 p-4 rounded-xl bg-white/5 border border-white/10 text-center"
+        >
+          <div className="flex items-center justify-center gap-2 text-gray-400">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="w-4 h-4 border-2 border-purple-500/30 border-t-purple-500 rounded-full"
+            />
+            <span className="text-sm">Calculating best price...</span>
           </div>
         </motion.div>
       )}
@@ -313,6 +417,7 @@ const SwapCard: React.FC = () => {
           disabled:from-gray-600 disabled:to-gray-700
           disabled:cursor-not-allowed text-white
           transition-all duration-200 relative overflow-hidden
+          flex items-center justify-center gap-2
         "
       >
         {isLoading && (
@@ -322,11 +427,14 @@ const SwapCard: React.FC = () => {
             className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
           />
         )}
-        <span className="relative">
+        <span className="relative flex items-center gap-2">
+          {isLoading && <Zap className="w-4 h-4 animate-pulse" />}
           {!account 
             ? 'Connect Wallet to Swap'
             : isLoading 
             ? 'Swapping...'
+            : isCalculating
+            ? 'Calculating...'
             : 'Swap'
           }
         </span>

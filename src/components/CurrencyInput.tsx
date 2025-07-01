@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import TokenSelector from './TokenSelector';
-import { Token } from '../constants/tokens';
+import { Token, formatTokenAmount } from '../constants/tokens';
+import { useWeb3 } from '../context/Web3Context';
 
 interface CurrencyInputProps {
   label: string;
@@ -13,6 +14,7 @@ interface CurrencyInputProps {
   balance?: string;
   readOnly?: boolean;
   showMaxButton?: boolean;
+  className?: string;
 }
 
 const CurrencyInput: React.FC<CurrencyInputProps> = ({
@@ -22,10 +24,38 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
   selectedToken,
   onTokenChange,
   otherToken,
-  balance = "0.0000",
+  balance,
   readOnly = false,
-  showMaxButton = true
+  showMaxButton = true,
+  className = ""
 }) => {
+  const { account, getTokenBalance } = useWeb3();
+  const [tokenBalance, setTokenBalance] = useState<string>('0.0000');
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+
+  // Fetch token balance
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (!account || !selectedToken) {
+        setTokenBalance('0.0000');
+        return;
+      }
+
+      setIsLoadingBalance(true);
+      try {
+        const balance = await getTokenBalance(selectedToken.address);
+        setTokenBalance(balance);
+      } catch (error) {
+        console.error('Error fetching token balance:', error);
+        setTokenBalance('0.0000');
+      } finally {
+        setIsLoadingBalance(false);
+      }
+    };
+
+    fetchBalance();
+  }, [account, selectedToken, getTokenBalance]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
     
@@ -40,7 +70,7 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
       // Prevent multiple decimal points
       const decimalCount = (inputValue.match(/\./g) || []).length;
       if (decimalCount <= 1) {
-        // Limit decimal places to token decimals (usually 6-18)
+        // Limit decimal places to token decimals
         const parts = inputValue.split('.');
         if (parts[1] && parts[1].length > selectedToken.decimals) {
           return; // Don't update if too many decimal places
@@ -51,19 +81,21 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
   };
 
   const handleMaxClick = () => {
-    if (balance && parseFloat(balance) > 0) {
-      onValueChange(balance);
+    const availableBalance = balance || tokenBalance;
+    if (availableBalance && parseFloat(availableBalance) > 0) {
+      // For native tokens, leave a small amount for gas
+      if (selectedToken.address === '0x0000000000000000000000000000000000000000') {
+        const balanceNum = parseFloat(availableBalance);
+        const maxAmount = Math.max(0, balanceNum - 0.01); // Leave 0.01 for gas
+        onValueChange(maxAmount.toString());
+      } else {
+        onValueChange(availableBalance);
+      }
     }
   };
 
-  const formatBalance = (bal: string) => {
-    const num = parseFloat(bal);
-    if (num === 0) return '0.0000';
-    if (num < 0.0001) return '< 0.0001';
-    if (num < 1) return num.toFixed(6);
-    if (num < 1000) return num.toFixed(4);
-    return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
-  };
+  const displayBalance = balance || tokenBalance;
+  const formattedBalance = formatTokenAmount(displayBalance, selectedToken.decimals);
 
   const getUSDValue = () => {
     if (!value || parseFloat(value) <= 0) return null;
@@ -73,7 +105,10 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
       'SUPRA': 0.85,
       'WSUPRA': 0.85,
       'USDT': 1.00,
-      'TOON': 0.12
+      'USDC': 1.00,
+      'DAI': 1.00,
+      'TOON': 0.12,
+      'WETH': 2500.00
     };
     
     const price = mockPrices[selectedToken.symbol] || 1.0;
@@ -83,17 +118,19 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
   };
 
   const usdValue = getUSDValue();
+  const hasInsufficientBalance = value && parseFloat(value) > parseFloat(displayBalance) && !readOnly;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="
-        p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-white/5 to-white/10 
+      className={`
+        p-3 sm:p-4 lg:p-5 rounded-2xl bg-gradient-to-br from-white/5 to-white/10 
         backdrop-blur-sm border border-white/20
         hover:border-white/30 transition-all duration-200 relative
         shadow-lg hover:shadow-xl
-      "
+        ${className}
+      `}
     >
       {/* Decorative gradient border */}
       <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-600/10 via-transparent to-blue-600/10 opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
@@ -101,12 +138,15 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
       {/* Header with label and balance */}
       <div className="flex justify-between items-center mb-3 relative">
         <span className="text-sm font-medium text-gray-300">{label}</span>
-        {balance && (
+        {account && (
           <div className="flex items-center gap-2">
             <span className="text-xs sm:text-sm text-gray-400">
-              Balance: <span className="font-semibold text-white">{formatBalance(balance)}</span>
+              Balance: 
+              <span className={`font-semibold text-white ml-1 ${isLoadingBalance ? 'animate-pulse' : ''}`}>
+                {isLoadingBalance ? '...' : formattedBalance}
+              </span>
             </span>
-            {!readOnly && showMaxButton && parseFloat(balance) > 0 && (
+            {!readOnly && showMaxButton && parseFloat(displayBalance) > 0 && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -134,11 +174,13 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
           onChange={handleInputChange}
           placeholder="0.0"
           readOnly={readOnly}
-          className="
-            flex-1 bg-transparent text-2xl sm:text-3xl font-bold text-white
+          className={`
+            flex-1 bg-transparent text-xl sm:text-2xl lg:text-3xl font-bold text-white
             placeholder-gray-500 focus:outline-none min-w-0
             transition-all duration-200
-          "
+            ${readOnly ? 'cursor-default' : 'cursor-text'}
+            ${hasInsufficientBalance ? 'text-red-400' : 'text-white'}
+          `}
           autoComplete="off"
           spellCheck="false"
         />
@@ -172,7 +214,7 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
       )}
 
       {/* Input validation feedback */}
-      {value && parseFloat(value) > parseFloat(balance) && !readOnly && (
+      {hasInsufficientBalance && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
@@ -181,6 +223,15 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
           <span>⚠️</span>
           <span>Insufficient {selectedToken.symbol} balance</span>
         </motion.div>
+      )}
+
+      {/* Loading state for balance */}
+      {isLoadingBalance && account && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="absolute top-2 right-2 w-4 h-4 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"
+        />
       )}
     </motion.div>
   );

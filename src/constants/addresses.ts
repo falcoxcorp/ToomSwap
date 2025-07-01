@@ -5,8 +5,9 @@ export const CONTRACT_ADDRESSES = {
   MULTICALL: "0xcA11bde05977b3631167028862bE2a173976CA11"
 };
 
+// Updated to match Supra Testnet actual configuration
 export const SUPRA_CHAIN = {
-  id: 8, // Updated to match StarKey's actual chain ID
+  id: 8, // Supra Testnet Chain ID
   name: "Supra Testnet",
   network: "supra-testnet",
   nativeCurrency: {
@@ -19,7 +20,16 @@ export const SUPRA_CHAIN = {
     public: { http: ["https://rpc-testnet.supra.com"] }
   },
   blockExplorers: {
-    default: { name: "SupraScan", url: "https://evm.suprascan.io" }
+    default: { name: "SupraScan", url: "https://testnet-explorer.supra.com" }
   },
   testnet: true
+};
+
+// Network configuration for wallet integration
+export const SUPRA_NETWORK_CONFIG = {
+  chainId: `0x${SUPRA_CHAIN.id.toString(16)}`, // 0x8
+  chainName: SUPRA_CHAIN.name,
+  nativeCurrency: SUPRA_CHAIN.nativeCurrency,
+  rpcUrls: SUPRA_CHAIN.rpcUrls.default.http,
+  blockExplorerUrls: [SUPRA_CHAIN.blockExplorers.default.url]
 };

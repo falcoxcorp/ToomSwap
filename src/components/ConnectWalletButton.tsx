@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, ChevronDown, Star, Download, ExternalLink, RefreshCw } from 'lucide-react';
+import { Wallet, ChevronDown, Star, Download, ExternalLink, RefreshCw, AlertCircle } from 'lucide-react';
 import { useWeb3 } from '../context/Web3Context';
 import { SUPRA_CHAIN } from '../constants/addresses';
 
 const ConnectWalletButton: React.FC = () => {
-  const { account, connectWallet, disconnectWallet, isConnecting, chainId, walletType } = useWeb3();
+  const { account, connectWallet, disconnectWallet, isConnecting, chainId, walletType, balance, switchToSupraNetwork } = useWeb3();
   const [showWalletOptions, setShowWalletOptions] = useState(false);
   const [isStarkeyDetected, setIsStarkeyDetected] = useState(false);
 
@@ -28,6 +28,17 @@ const ConnectWalletButton: React.FC = () => {
     // Method 3: Check for StarKey in ethereum providers array
     if (window.ethereum && window.ethereum.providers) {
       return window.ethereum.providers.some((provider: any) => provider.isStarkey);
+    }
+    
+    // Method 4: Check for StarKey specific methods
+    if (window.ethereum && typeof window.ethereum.request === 'function') {
+      try {
+        if (window.ethereum.isStarkey !== undefined) {
+          return true;
+        }
+      } catch (error) {
+        // Silent fail
+      }
     }
     
     return false;
@@ -79,9 +90,24 @@ const ConnectWalletButton: React.FC = () => {
     }
   };
 
+  const handleNetworkSwitch = async () => {
+    if (isWrongNetwork) {
+      await switchToSupraNetwork();
+    }
+  };
+
   const getWalletDisplayName = () => {
     if (walletType === 'starkey') return 'StarKey';
     return 'Wallet';
+  };
+
+  const formatBalance = (bal: string) => {
+    const num = parseFloat(bal);
+    if (num === 0) return '0.0000';
+    if (num < 0.0001) return '< 0.0001';
+    if (num < 1) return num.toFixed(4);
+    if (num < 1000) return num.toFixed(2);
+    return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
   };
 
   if (account) {
@@ -104,15 +130,26 @@ const ConnectWalletButton: React.FC = () => {
               : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
             }
           `}
-          onClick={disconnectWallet}
+          onClick={isWrongNetwork ? handleNetworkSwitch : disconnectWallet}
         >
           <div className="flex items-center gap-1 sm:gap-2">
-            <Star className="w-3 h-3 sm:w-4 sm:h-4 text-purple-400" />
+            {isWrongNetwork ? (
+              <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4 text-red-400" />
+            ) : (
+              <Star className="w-3 h-3 sm:w-4 sm:h-4 text-purple-400" />
+            )}
             <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isWrongNetwork ? 'bg-red-400' : 'bg-green-400'}`} />
           </div>
           <div className="flex flex-col items-start min-w-0">
             <span className="text-xs text-gray-400 hidden sm:block">{getWalletDisplayName()}</span>
-            <span className="truncate">{isWrongNetwork ? 'Wrong Network' : shortAddress}</span>
+            <span className="truncate">
+              {isWrongNetwork ? 'Switch Network' : shortAddress}
+            </span>
+            {!isWrongNetwork && balance && (
+              <span className="text-xs text-gray-400 hidden lg:block">
+                {formatBalance(balance)} SUPRA
+              </span>
+            )}
           </div>
           <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4 hidden sm:block" />
         </motion.button>

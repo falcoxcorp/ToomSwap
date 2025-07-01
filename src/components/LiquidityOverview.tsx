@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, ExternalLink, Info, Droplets, Minus, TrendingUp, AlertCircle } from 'lucide-react';
+import { Plus, ExternalLink, Info, Droplets, Minus, TrendingUp, AlertCircle, Zap } from 'lucide-react';
 import { useWeb3 } from '../context/Web3Context';
 import RemoveLiquidityModal from './RemoveLiquidityModal';
 
@@ -20,17 +20,19 @@ interface LiquidityPosition {
   value: number;
   apy: number;
   version: 'V2' | 'V3';
+  fees24h: number;
 }
 
 const LiquidityOverview: React.FC<LiquidityOverviewProps> = ({ 
   onAddLiquidityV2, 
   onAddLiquidityV3 
 }) => {
-  const { account } = useWeb3();
+  const { account, chainId } = useWeb3();
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState<LiquidityPosition | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Mock liquidity positions
+  // Mock liquidity positions with enhanced data
   const liquidityPositions: LiquidityPosition[] = account ? [
     {
       id: '1',
@@ -42,19 +44,34 @@ const LiquidityOverview: React.FC<LiquidityOverviewProps> = ({
       share: 0.15,
       value: 2312.50,
       apy: 24.5,
-      version: 'V2'
+      version: 'V2',
+      fees24h: 12.45
     },
     {
       id: '2',
       tokenA: 'WSUPRA',
-      tokenB: 'USDT',
+      tokenB: 'USDC',
       tokenAAmount: '850.00',
       tokenBAmount: '722.50',
       lpTokens: '785.12',
       share: 0.08,
       value: 1572.50,
       apy: 18.2,
-      version: 'V3'
+      version: 'V3',
+      fees24h: 8.32
+    },
+    {
+      id: '3',
+      tokenA: 'TOON',
+      tokenB: 'SUPRA',
+      tokenAAmount: '5,000.00',
+      tokenBAmount: '600.00',
+      lpTokens: '1,732.05',
+      share: 0.12,
+      value: 1110.00,
+      apy: 35.8,
+      version: 'V2',
+      fees24h: 15.67
     }
   ] : [];
 
@@ -67,6 +84,16 @@ const LiquidityOverview: React.FC<LiquidityOverviewProps> = ({
   const averageAPY = liquidityPositions.length > 0 
     ? liquidityPositions.reduce((sum, pos) => sum + pos.apy, 0) / liquidityPositions.length 
     : 0;
+  const totalFees24h = liquidityPositions.reduce((sum, pos) => sum + pos.fees24h, 0);
+
+  // Simulate loading state
+  useEffect(() => {
+    if (account) {
+      setIsLoading(true);
+      const timer = setTimeout(() => setIsLoading(false), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [account]);
 
   return (
     <motion.div
@@ -98,14 +125,28 @@ const LiquidityOverview: React.FC<LiquidityOverviewProps> = ({
         </div>
       </div>
 
+      {/* Network Status */}
+      {chainId !== 8 && account && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="mb-4 p-3 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center gap-2"
+        >
+          <AlertCircle className="w-4 h-4 text-orange-400 flex-shrink-0" />
+          <span className="text-sm text-orange-300">
+            Please switch to Supra network to view liquidity positions
+          </span>
+        </motion.div>
+      )}
+
       {/* Portfolio Summary */}
-      {account && liquidityPositions.length > 0 && (
+      {account && liquidityPositions.length > 0 && !isLoading && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-4 sm:mb-6 p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-blue-600/10 to-purple-600/10 border border-blue-500/20"
         >
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <div className="text-xs sm:text-sm text-gray-400 mb-1">Total Value</div>
               <div className="text-lg sm:text-xl font-bold text-white">
@@ -117,6 +158,13 @@ const LiquidityOverview: React.FC<LiquidityOverviewProps> = ({
               <div className="text-lg sm:text-xl font-bold text-green-400 flex items-center gap-1">
                 <TrendingUp className="w-4 h-4" />
                 {averageAPY.toFixed(1)}%
+              </div>
+            </div>
+            <div>
+              <div className="text-xs sm:text-sm text-gray-400 mb-1">24h Fees</div>
+              <div className="text-lg sm:text-xl font-bold text-purple-400 flex items-center gap-1">
+                <Zap className="w-4 h-4" />
+                ${totalFees24h.toFixed(2)}
               </div>
             </div>
           </div>
@@ -167,13 +215,30 @@ const LiquidityOverview: React.FC<LiquidityOverviewProps> = ({
           </h3>
           
           {account ? (
-            liquidityPositions.length > 0 ? (
+            isLoading ? (
               <div className="space-y-3">
-                {liquidityPositions.map((position) => (
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/10 animate-pulse">
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="h-4 bg-gray-600 rounded w-20"></div>
+                      <div className="h-4 bg-gray-600 rounded w-16"></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div className="h-3 bg-gray-600 rounded"></div>
+                      <div className="h-3 bg-gray-600 rounded"></div>
+                    </div>
+                    <div className="h-3 bg-gray-600 rounded w-24"></div>
+                  </div>
+                ))}
+              </div>
+            ) : liquidityPositions.length > 0 ? (
+              <div className="space-y-3">
+                {liquidityPositions.map((position, index) => (
                   <motion.div
                     key={position.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
                     whileHover={{ scale: 1.01 }}
                     className="
                       p-3 sm:p-4 rounded-2xl bg-white/5 border border-white/10
@@ -217,10 +282,20 @@ const LiquidityOverview: React.FC<LiquidityOverviewProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs sm:text-sm">
+                    <div className="flex items-center justify-between text-xs sm:text-sm mb-2">
                       <div>
                         <span className="text-gray-400">Pool Share: </span>
                         <span className="text-white font-medium">{position.share}%</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">24h Fees: </span>
+                        <span className="text-purple-400 font-medium">${position.fees24h.toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-gray-400">
+                        LP Tokens: <span className="text-white font-medium">{position.lpTokens}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <motion.button
