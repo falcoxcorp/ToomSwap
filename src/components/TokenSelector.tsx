@@ -111,23 +111,37 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
         </motion.button>
       </div>
 
-      {/* Full Screen Modal Portal with MAXIMUM Z-INDEX */}
+      {/* MAXIMUM Z-INDEX MODAL PORTAL */}
       <AnimatePresence>
         {isOpen && (
           <div 
             className="fixed inset-0 flex items-center justify-center p-4" 
-            style={{ zIndex: 999999999 }} // MAXIMUM Z-INDEX
+            style={{ 
+              zIndex: 2147483647, // MAXIMUM POSSIBLE Z-INDEX VALUE
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0
+            }}
           >
-            {/* Enhanced Backdrop */}
+            {/* MAXIMUM Z-INDEX BACKDROP */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
-              style={{ zIndex: 999999998 }}
+              className="absolute inset-0 bg-black/90 backdrop-blur-lg"
+              style={{ 
+                zIndex: 2147483646,
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0
+              }}
             />
             
-            {/* Modal Container */}
+            {/* MAXIMUM Z-INDEX MODAL CONTAINER */}
             <motion.div
               ref={modalRef}
               initial={{ opacity: 0, scale: 0.8, y: 50 }}
@@ -141,20 +155,23 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
               }}
               className="
                 w-full max-w-sm sm:max-w-lg max-h-[85vh] overflow-hidden
-                bg-gradient-to-br from-gray-900/98 to-gray-800/98 
-                backdrop-blur-2xl border border-white/20 rounded-3xl
+                bg-gradient-to-br from-gray-900/99 to-gray-800/99 
+                backdrop-blur-2xl border-2 border-white/30 rounded-3xl
                 shadow-2xl relative
               "
-              style={{ zIndex: 999999999 }} // MAXIMUM Z-INDEX
+              style={{ 
+                zIndex: 2147483647, // MAXIMUM POSSIBLE Z-INDEX VALUE
+                position: 'relative'
+              }}
             >
               {/* Decorative top border */}
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500/60 to-transparent" />
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500/80 to-transparent" />
               
               {/* Header */}
-              <div className="p-4 sm:p-6 border-b border-white/10 bg-gradient-to-r from-gray-900/95 to-gray-800/95">
+              <div className="p-4 sm:p-6 border-b border-white/20 bg-gradient-to-r from-gray-900/98 to-gray-800/98">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30">
+                    <div className="p-2 rounded-xl bg-gradient-to-r from-purple-600/30 to-blue-600/30 border border-purple-500/40">
                       <Star className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
                     </div>
                     <div>
@@ -167,8 +184,8 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                     whileTap={{ scale: 0.9 }}
                     onClick={handleCloseModal}
                     className="
-                      p-2 sm:p-2.5 hover:bg-white/10 rounded-xl transition-all duration-200
-                      border border-white/10 hover:border-white/20
+                      p-2 sm:p-2.5 hover:bg-white/20 rounded-xl transition-all duration-200
+                      border border-white/20 hover:border-white/40
                     "
                   >
                     <X className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
@@ -185,9 +202,9 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="
-                      w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-4 bg-white/5 border border-white/20 rounded-2xl
+                      w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-4 bg-white/10 border border-white/30 rounded-2xl
                       text-white placeholder-gray-400 focus:outline-none 
-                      focus:border-purple-500/50 focus:bg-white/10
+                      focus:border-purple-500/70 focus:bg-white/15
                       transition-all duration-200 text-sm sm:text-base
                     "
                   />
@@ -198,7 +215,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-white/10 rounded-lg"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-white/20 rounded-lg"
                     >
                       <X className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                     </motion.button>
@@ -207,7 +224,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
               </div>
 
               {/* Token List */}
-              <div className="max-h-80 sm:max-h-96 overflow-y-auto bg-gradient-to-b from-gray-900/95 to-gray-800/95">
+              <div className="max-h-80 sm:max-h-96 overflow-y-auto bg-gradient-to-b from-gray-900/98 to-gray-800/98">
                 {filteredTokens.length > 0 ? (
                   <div className="p-2">
                     {filteredTokens.map((token, index) => (
@@ -218,25 +235,25 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                         transition={{ delay: index * 0.05 }}
                         whileHover={{ 
                           scale: 1.02,
-                          backgroundColor: 'rgba(255, 255, 255, 0.08)'
+                          backgroundColor: 'rgba(255, 255, 255, 0.12)'
                         }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => handleSelectToken(token)}
                         className="
                           w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 text-left rounded-2xl
-                          hover:bg-white/5 transition-all duration-200 mb-2
-                          border border-transparent hover:border-white/10
+                          hover:bg-white/10 transition-all duration-200 mb-2
+                          border border-transparent hover:border-white/20
                           group relative overflow-hidden
                         "
                       >
                         {/* Background gradient on hover */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-purple-600/5 to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 to-blue-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                         
                         <div className="relative">
                           <img 
                             src={token.logoURI} 
                             alt={token.symbol}
-                            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex-shrink-0 ring-2 ring-white/10 group-hover:ring-white/20 transition-all duration-200"
+                            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex-shrink-0 ring-2 ring-white/20 group-hover:ring-white/40 transition-all duration-200"
                             onError={(e) => {
                               e.currentTarget.src = 'https://via.placeholder.com/48x48/6C5CE7/FFFFFF?text=' + token.symbol[0];
                             }}
@@ -261,7 +278,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                               <motion.div
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                className="px-2 py-1 bg-purple-500/20 border border-purple-500/30 rounded-lg"
+                                className="px-2 py-1 bg-purple-500/30 border border-purple-500/50 rounded-lg"
                               >
                                 <span className="text-xs text-purple-300 font-medium">Selected</span>
                               </motion.div>
@@ -303,7 +320,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
               </div>
 
               {/* Footer */}
-              <div className="p-3 sm:p-4 border-t border-white/10 bg-gradient-to-r from-gray-900/95 to-gray-800/95">
+              <div className="p-3 sm:p-4 border-t border-white/20 bg-gradient-to-r from-gray-900/98 to-gray-800/98">
                 <div className="text-center">
                   <p className="text-xs text-gray-400">
                     Can't find your token? 

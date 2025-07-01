@@ -99,3 +99,27 @@ html, body {
     background-color: rgba(17, 24, 39, 0.7);
   }
 }
+
+/* CRITICAL: Ensure maximum z-index for token selector modal */
+.token-selector-modal {
+  z-index: 2147483647 !important;
+  position: fixed !important;
+}
+
+.token-selector-backdrop {
+  z-index: 2147483646 !important;
+  position: fixed !important;
+}
+
+/* Ensure all other elements have lower z-index */
+.swap-page-header {
+  z-index: 10 !important;
+}
+
+.swap-page-main {
+  z-index: 5 !important;
+}
+
+.swap-page-footer {
+  z-index: 1 !important;
+}
