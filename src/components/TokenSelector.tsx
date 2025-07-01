@@ -111,227 +111,431 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
         </motion.button>
       </div>
 
-      {/* MAXIMUM Z-INDEX MODAL PORTAL */}
+      {/* ULTRA HIGH Z-INDEX MODAL PORTAL - GUARANTEED FIRST PLANE */}
       <AnimatePresence>
         {isOpen && (
-          <div 
-            className="fixed inset-0 flex items-center justify-center p-4" 
-            style={{ 
-              zIndex: 2147483647, // MAXIMUM POSSIBLE Z-INDEX VALUE
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0
-            }}
-          >
-            {/* MAXIMUM Z-INDEX BACKDROP */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/90 backdrop-blur-lg"
+          <>
+            {/* Create a portal-like container with MAXIMUM z-index */}
+            <div 
+              className="token-selector-modal-container"
               style={{ 
-                zIndex: 2147483646,
                 position: 'fixed',
                 top: 0,
                 left: 0,
                 right: 0,
-                bottom: 0
-              }}
-            />
-            
-            {/* MAXIMUM Z-INDEX MODAL CONTAINER */}
-            <motion.div
-              ref={modalRef}
-              initial={{ opacity: 0, scale: 0.8, y: 50 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: 50 }}
-              transition={{ 
-                type: "spring", 
-                damping: 25, 
-                stiffness: 300,
-                duration: 0.3
-              }}
-              className="
-                w-full max-w-sm sm:max-w-lg max-h-[85vh] overflow-hidden
-                bg-gradient-to-br from-gray-900/99 to-gray-800/99 
-                backdrop-blur-2xl border-2 border-white/30 rounded-3xl
-                shadow-2xl relative
-              "
-              style={{ 
-                zIndex: 2147483647, // MAXIMUM POSSIBLE Z-INDEX VALUE
-                position: 'relative'
+                bottom: 0,
+                zIndex: 999999999, // ULTRA HIGH Z-INDEX
+                pointerEvents: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '16px'
               }}
             >
-              {/* Decorative top border */}
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500/80 to-transparent" />
+              {/* ULTRA HIGH Z-INDEX BACKDROP */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{ 
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  zIndex: 999999998,
+                  backgroundColor: 'rgba(0, 0, 0, 0.95)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)'
+                }}
+                onClick={handleCloseModal}
+              />
               
-              {/* Header */}
-              <div className="p-4 sm:p-6 border-b border-white/20 bg-gradient-to-r from-gray-900/98 to-gray-800/98">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-gradient-to-r from-purple-600/30 to-blue-600/30 border border-purple-500/40">
-                      <Star className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg sm:text-xl font-bold text-white">Select Token</h3>
-                      <p className="text-xs sm:text-sm text-gray-400">Choose from available tokens</p>
-                    </div>
-                  </div>
-                  <motion.button
-                    whileHover={{ scale: 1.1, rotate: 90 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={handleCloseModal}
-                    className="
-                      p-2 sm:p-2.5 hover:bg-white/20 rounded-xl transition-all duration-200
-                      border border-white/20 hover:border-white/40
-                    "
-                  >
-                    <X className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                  </motion.button>
-                </div>
+              {/* ULTRA HIGH Z-INDEX MODAL CONTAINER */}
+              <motion.div
+                ref={modalRef}
+                initial={{ opacity: 0, scale: 0.8, y: 50 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8, y: 50 }}
+                transition={{ 
+                  type: "spring", 
+                  damping: 25, 
+                  stiffness: 300,
+                  duration: 0.3
+                }}
+                style={{ 
+                  position: 'relative',
+                  zIndex: 999999999, // ULTRA HIGH Z-INDEX
+                  width: '100%',
+                  maxWidth: '32rem', // sm:max-w-lg
+                  maxHeight: '85vh',
+                  overflow: 'hidden',
+                  background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.99) 0%, rgba(31, 41, 55, 0.99) 100%)',
+                  backdropFilter: 'blur(40px)',
+                  WebkitBackdropFilter: 'blur(40px)',
+                  border: '3px solid rgba(255, 255, 255, 0.4)',
+                  borderRadius: '24px',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1)'
+                }}
+              >
+                {/* Decorative top border */}
+                <div 
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: '2px',
+                    background: 'linear-gradient(90deg, transparent 0%, rgba(139, 92, 246, 0.8) 50%, transparent 100%)'
+                  }}
+                />
                 
-                {/* Enhanced Search Input */}
-                <div className="relative">
-                  <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder="Search by name or symbol..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="
-                      w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-4 bg-white/10 border border-white/30 rounded-2xl
-                      text-white placeholder-gray-400 focus:outline-none 
-                      focus:border-purple-500/70 focus:bg-white/15
-                      transition-all duration-200 text-sm sm:text-base
-                    "
-                  />
-                  {searchQuery && (
-                    <motion.button
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-white/20 rounded-lg"
-                    >
-                      <X className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
-                    </motion.button>
-                  )}
-                </div>
-              </div>
-
-              {/* Token List */}
-              <div className="max-h-80 sm:max-h-96 overflow-y-auto bg-gradient-to-b from-gray-900/98 to-gray-800/98">
-                {filteredTokens.length > 0 ? (
-                  <div className="p-2">
-                    {filteredTokens.map((token, index) => (
-                      <motion.button
-                        key={token.address}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        whileHover={{ 
-                          scale: 1.02,
-                          backgroundColor: 'rgba(255, 255, 255, 0.12)'
+                {/* Header */}
+                <div 
+                  style={{
+                    padding: '24px',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
+                    background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.98) 0%, rgba(31, 41, 55, 0.98) 100%)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div 
+                        style={{
+                          padding: '8px',
+                          borderRadius: '12px',
+                          background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(59, 130, 246, 0.3) 100%)',
+                          border: '1px solid rgba(139, 92, 246, 0.4)'
                         }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => handleSelectToken(token)}
-                        className="
-                          w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 text-left rounded-2xl
-                          hover:bg-white/10 transition-all duration-200 mb-2
-                          border border-transparent hover:border-white/20
-                          group relative overflow-hidden
-                        "
                       >
-                        {/* Background gradient on hover */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 to-blue-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                        
-                        <div className="relative">
-                          <img 
-                            src={token.logoURI} 
-                            alt={token.symbol}
-                            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex-shrink-0 ring-2 ring-white/20 group-hover:ring-white/40 transition-all duration-200"
-                            onError={(e) => {
-                              e.currentTarget.src = 'https://via.placeholder.com/48x48/6C5CE7/FFFFFF?text=' + token.symbol[0];
+                        <Star style={{ width: '20px', height: '20px', color: 'rgb(196, 181, 253)' }} />
+                      </div>
+                      <div>
+                        <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', margin: 0 }}>
+                          Select Token
+                        </h3>
+                        <p style={{ fontSize: '14px', color: 'rgb(156, 163, 175)', margin: 0 }}>
+                          Choose from available tokens
+                        </p>
+                      </div>
+                    </div>
+                    <motion.button
+                      whileHover={{ scale: 1.1, rotate: 90 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={handleCloseModal}
+                      style={{
+                        padding: '10px',
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        borderRadius: '12px',
+                        color: 'rgb(156, 163, 175)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <X style={{ width: '20px', height: '20px' }} />
+                    </motion.button>
+                  </div>
+                  
+                  {/* Enhanced Search Input */}
+                  <div style={{ position: 'relative' }}>
+                    <Search 
+                      style={{ 
+                        position: 'absolute', 
+                        left: '16px', 
+                        top: '50%', 
+                        transform: 'translateY(-50%)', 
+                        width: '20px', 
+                        height: '20px', 
+                        color: 'rgb(156, 163, 175)' 
+                      }} 
+                    />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Search by name or symbol..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{
+                        width: '100%',
+                        paddingLeft: '48px',
+                        paddingRight: '16px',
+                        paddingTop: '16px',
+                        paddingBottom: '16px',
+                        background: 'rgba(255, 255, 255, 0.15)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        borderRadius: '16px',
+                        color: 'white',
+                        fontSize: '16px',
+                        outline: 'none',
+                        transition: 'all 0.2s'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = 'rgba(139, 92, 246, 0.7)';
+                        e.target.style.background = 'rgba(255, 255, 255, 0.2)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                        e.target.style.background = 'rgba(255, 255, 255, 0.15)';
+                      }}
+                    />
+                    {searchQuery && (
+                      <motion.button
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => setSearchQuery('')}
+                        style={{
+                          position: 'absolute',
+                          right: '12px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          padding: '4px',
+                          background: 'rgba(255, 255, 255, 0.1)',
+                          border: 'none',
+                          borderRadius: '8px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <X style={{ width: '16px', height: '16px', color: 'rgb(156, 163, 175)' }} />
+                      </motion.button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Token List */}
+                <div 
+                  style={{
+                    maxHeight: '384px',
+                    overflowY: 'auto',
+                    background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.98) 0%, rgba(31, 41, 55, 0.98) 100%)'
+                  }}
+                >
+                  {filteredTokens.length > 0 ? (
+                    <div style={{ padding: '8px' }}>
+                      {filteredTokens.map((token, index) => (
+                        <motion.button
+                          key={token.address}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          whileHover={{ 
+                            scale: 1.02,
+                            backgroundColor: 'rgba(255, 255, 255, 0.15)'
+                          }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => handleSelectToken(token)}
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '16px',
+                            padding: '16px',
+                            textAlign: 'left',
+                            borderRadius: '16px',
+                            background: 'transparent',
+                            border: '1px solid transparent',
+                            marginBottom: '8px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            position: 'relative',
+                            overflow: 'hidden'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.borderColor = 'transparent';
+                          }}
+                        >
+                          {/* Background gradient on hover */}
+                          <div 
+                            style={{
+                              position: 'absolute',
+                              inset: 0,
+                              background: 'linear-gradient(90deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%)',
+                              opacity: 0,
+                              transition: 'opacity 0.2s',
+                              pointerEvents: 'none'
                             }}
                           />
-                          {selectedToken.address === token.address && (
-                            <motion.div
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              className="absolute -top-1 -right-1 w-3 h-3 sm:w-4 sm:h-4 bg-purple-500 rounded-full border-2 border-gray-900 flex items-center justify-center"
-                            >
-                              <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-white rounded-full" />
-                            </motion.div>
-                          )}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0 relative">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-bold text-white text-base sm:text-lg truncate group-hover:text-purple-100 transition-colors">
-                              {token.symbol}
-                            </span>
+                          
+                          <div style={{ position: 'relative' }}>
+                            <img 
+                              src={token.logoURI} 
+                              alt={token.symbol}
+                              style={{
+                                width: '48px',
+                                height: '48px',
+                                borderRadius: '50%',
+                                flexShrink: 0,
+                                border: '2px solid rgba(255, 255, 255, 0.2)'
+                              }}
+                              onError={(e) => {
+                                e.currentTarget.src = 'https://via.placeholder.com/48x48/6C5CE7/FFFFFF?text=' + token.symbol[0];
+                              }}
+                            />
                             {selectedToken.address === token.address && (
                               <motion.div
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                className="px-2 py-1 bg-purple-500/30 border border-purple-500/50 rounded-lg"
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                style={{
+                                  position: 'absolute',
+                                  top: '-4px',
+                                  right: '-4px',
+                                  width: '16px',
+                                  height: '16px',
+                                  background: 'rgb(139, 92, 246)',
+                                  borderRadius: '50%',
+                                  border: '2px solid rgb(17, 24, 39)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
                               >
-                                <span className="text-xs text-purple-300 font-medium">Selected</span>
+                                <div 
+                                  style={{
+                                    width: '6px',
+                                    height: '6px',
+                                    background: 'white',
+                                    borderRadius: '50%'
+                                  }}
+                                />
                               </motion.div>
                             )}
                           </div>
-                          <div className="text-xs sm:text-sm text-gray-400 truncate group-hover:text-gray-300 transition-colors">
-                            {token.name}
+                          
+                          <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                              <span 
+                                style={{
+                                  fontWeight: 'bold',
+                                  color: 'white',
+                                  fontSize: '18px',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
+                                {token.symbol}
+                              </span>
+                              {selectedToken.address === token.address && (
+                                <motion.div
+                                  initial={{ opacity: 0, x: -10 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  style={{
+                                    padding: '4px 8px',
+                                    background: 'rgba(139, 92, 246, 0.3)',
+                                    border: '1px solid rgba(139, 92, 246, 0.5)',
+                                    borderRadius: '8px'
+                                  }}
+                                >
+                                  <span style={{ fontSize: '12px', color: 'rgb(196, 181, 253)', fontWeight: 'medium' }}>
+                                    Selected
+                                  </span>
+                                </motion.div>
+                              )}
+                            </div>
+                            <div 
+                              style={{
+                                fontSize: '14px',
+                                color: 'rgb(156, 163, 175)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              {token.name}
+                            </div>
+                            <div 
+                              style={{
+                                fontSize: '12px',
+                                color: 'rgb(107, 114, 128)',
+                                marginTop: '4px',
+                                fontFamily: 'monospace'
+                              }}
+                            >
+                              {token.address.slice(0, 6)}...{token.address.slice(-4)}
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-500 mt-1 font-mono">
-                            {token.address.slice(0, 6)}...{token.address.slice(-4)}
+
+                          {/* Balance placeholder */}
+                          <div style={{ textAlign: 'right', position: 'relative' }}>
+                            <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'white' }}>
+                              0.0000
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'rgb(156, 163, 175)' }}>
+                              $0.00
+                            </div>
                           </div>
-                        </div>
-
-                        {/* Balance placeholder */}
-                        <div className="text-right relative">
-                          <div className="text-xs sm:text-sm font-semibold text-white">0.0000</div>
-                          <div className="text-xs text-gray-400">$0.00</div>
-                        </div>
-                      </motion.button>
-                    ))}
-                  </div>
-                ) : (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="p-8 sm:p-12 text-center"
-                  >
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 rounded-full bg-gray-700/50 flex items-center justify-center">
-                      <Search className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
+                        </motion.button>
+                      ))}
                     </div>
-                    <div className="text-gray-400 text-sm sm:text-base font-medium mb-2">
-                      No tokens found
-                    </div>
-                    <div className="text-gray-500 text-xs sm:text-sm">
-                      Try searching with a different term
-                    </div>
-                  </motion.div>
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="p-3 sm:p-4 border-t border-white/20 bg-gradient-to-r from-gray-900/98 to-gray-800/98">
-                <div className="text-center">
-                  <p className="text-xs text-gray-400">
-                    Can't find your token? 
-                    <button className="text-purple-400 hover:text-purple-300 ml-1 font-medium transition-colors">
-                      Import custom token
-                    </button>
-                  </p>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      style={{ padding: '48px', textAlign: 'center' }}
+                    >
+                      <div 
+                        style={{
+                          width: '64px',
+                          height: '64px',
+                          margin: '0 auto 16px',
+                          borderRadius: '50%',
+                          background: 'rgba(107, 114, 128, 0.5)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        <Search style={{ width: '32px', height: '32px', color: 'rgb(156, 163, 175)' }} />
+                      </div>
+                      <div style={{ color: 'rgb(156, 163, 175)', fontSize: '16px', fontWeight: 'medium', marginBottom: '8px' }}>
+                        No tokens found
+                      </div>
+                      <div style={{ color: 'rgb(107, 114, 128)', fontSize: '14px' }}>
+                        Try searching with a different term
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
-              </div>
-            </motion.div>
-          </div>
+
+                {/* Footer */}
+                <div 
+                  style={{
+                    padding: '16px',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.2)',
+                    background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.98) 0%, rgba(31, 41, 55, 0.98) 100%)'
+                  }}
+                >
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontSize: '12px', color: 'rgb(156, 163, 175)', margin: 0 }}>
+                      Can't find your token? 
+                      <button 
+                        style={{ 
+                          color: 'rgb(196, 181, 253)', 
+                          marginLeft: '4px', 
+                          fontWeight: 'medium', 
+                          background: 'none', 
+                          border: 'none', 
+                          cursor: 'pointer',
+                          fontSize: '12px'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(221, 214, 254)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(196, 181, 253)'}
+                      >
+                        Import custom token
+                      </button>
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </>
         )}
       </AnimatePresence>
     </>

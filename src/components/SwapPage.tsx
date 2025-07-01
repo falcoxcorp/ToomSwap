@@ -55,11 +55,12 @@ const SwapPage: React.FC<SwapPageProps> = ({ onNavigateHome }) => {
 
   return (
     <div className="min-h-screen flex flex-col relative">
-      {/* Header with LOWER Z-INDEX */}
+      {/* Header with REDUCED Z-INDEX */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 flex items-center justify-between p-4 sm:p-6"
+        className="swap-page-header relative flex items-center justify-between p-4 sm:p-6"
+        style={{ zIndex: 10 }}
       >
         <div className="flex items-center gap-4">
           <motion.button
@@ -112,8 +113,8 @@ const SwapPage: React.FC<SwapPageProps> = ({ onNavigateHome }) => {
         </div>
       </motion.header>
 
-      {/* Main Content with LOWER Z-INDEX */}
-      <main className="relative z-5 container mx-auto px-4 sm:px-6 pb-8 sm:pb-12 flex-1">
+      {/* Main Content with REDUCED Z-INDEX */}
+      <main className="swap-page-main relative container mx-auto px-4 sm:px-6 pb-8 sm:pb-12 flex-1" style={{ zIndex: 5 }}>
         <div className="max-w-sm sm:max-w-md lg:max-w-2xl mx-auto">
           <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
           {renderContent()}
@@ -127,9 +128,9 @@ const SwapPage: React.FC<SwapPageProps> = ({ onNavigateHome }) => {
             fixed bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6 mx-auto max-w-sm
             p-3 sm:p-4 rounded-2xl bg-green-500/10 backdrop-blur-sm
             border border-green-500/20 text-center
-            lg:left-auto lg:right-6 lg:max-w-sm z-5
+            lg:left-auto lg:right-6 lg:max-w-sm
           "
-          style={{ display: 'none' }}
+          style={{ display: 'none', zIndex: 5 }}
         >
           <div className="text-green-400 font-medium mb-1 text-sm sm:text-base">Transaction successful!</div>
           <button className="text-xs sm:text-sm text-green-300 hover:text-green-200 transition-colors">
@@ -141,8 +142,10 @@ const SwapPage: React.FC<SwapPageProps> = ({ onNavigateHome }) => {
         </motion.div>
       </main>
 
-      {/* Footer */}
-      <Footer />
+      {/* Footer with REDUCED Z-INDEX */}
+      <div className="swap-page-footer" style={{ zIndex: 1 }}>
+        <Footer />
+      </div>
     </div>
   );
 };

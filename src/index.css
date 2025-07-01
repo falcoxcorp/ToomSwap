@@ -100,26 +100,56 @@ html, body {
   }
 }
 
-/* CRITICAL: Ensure maximum z-index for token selector modal */
-.token-selector-modal {
-  z-index: 2147483647 !important;
+/* ULTRA HIGH PRIORITY Z-INDEX FOR TOKEN SELECTOR */
+.token-selector-modal-container {
+  z-index: 999999999 !important;
   position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  pointer-events: auto !important;
 }
 
-.token-selector-backdrop {
-  z-index: 2147483646 !important;
-  position: fixed !important;
-}
-
-/* Ensure all other elements have lower z-index */
+/* Ensure all other elements have much lower z-index */
 .swap-page-header {
   z-index: 10 !important;
+  position: relative !important;
 }
 
 .swap-page-main {
   z-index: 5 !important;
+  position: relative !important;
 }
 
 .swap-page-footer {
   z-index: 1 !important;
+  position: relative !important;
+}
+
+/* Force maximum z-index for token selector */
+.token-selector-modal {
+  z-index: 999999999 !important;
+  position: fixed !important;
+}
+
+.token-selector-backdrop {
+  z-index: 999999998 !important;
+  position: fixed !important;
+}
+
+/* Override any conflicting z-index values */
+* {
+  z-index: auto;
+}
+
+/* Specific overrides for common UI elements */
+header, nav, main, footer, section, div {
+  z-index: auto !important;
+}
+
+/* Exception only for our token selector */
+.token-selector-modal-container,
+.token-selector-modal-container * {
+  z-index: 999999999 !important;
 }
