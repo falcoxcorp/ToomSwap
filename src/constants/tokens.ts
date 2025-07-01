@@ -37,15 +37,6 @@ export const USDT_TOKEN: Token = {
   logoURI: "https://cryptologos.cc/logos/tether-usdt-logo.png"
 };
 
-// USDC token on Supra testnet
-export const USDC_TOKEN: Token = {
-  name: "USD Coin",
-  symbol: "USDC",
-  address: "0xa0b86a33e6ba7b2f3b8c4b6b8b8b8b8b8b8b8b8b",
-  chainId: 8,
-  decimals: 6,
-  logoURI: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png"
-};
 
 // ToonSwap native token
 export const TOON_TOKEN: Token = {
