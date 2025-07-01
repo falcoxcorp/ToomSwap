@@ -8,6 +8,7 @@ import SwapCard from './components/SwapCard';
 import LiquidityOverview from './components/LiquidityOverview';
 import LiquidityCard from './components/LiquidityCard';
 import Footer from './components/Footer';
+import SpaceBackground from './components/SpaceBackground';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'swap' | 'liquidity' | 'cross-swap' | 'bridge'>('swap');
@@ -52,10 +53,9 @@ function App() {
 
   return (
     <Web3Provider>
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-blue-900/20 flex flex-col overflow-x-hidden">
-        {/* Background Effects */}
-        <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-900/20 via-gray-900 to-gray-900" />
-        <div className="fixed inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2760%27%20height%3D%2760%27%20viewBox%3D%270%200%2060%2060%27%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%3E%3Cg%20fill%3D%27none%27%20fill-rule%3D%27evenodd%27%3E%3Cg%20fill%3D%27%239C92AC%27%20fill-opacity%3D%270.05%27%3E%3Ccircle%20cx%3D%2730%27%20cy%3D%2730%27%20r%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-20" />
+      <div className="min-h-screen relative flex flex-col overflow-x-hidden">
+        {/* Space Background */}
+        <SpaceBackground />
 
         {/* Header */}
         <motion.header
