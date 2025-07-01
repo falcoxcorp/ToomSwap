@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { ArrowUpDown, Settings, Info, AlertTriangle, TrendingUp, Zap } from 'lucide-react';
 import CurrencyInput from './CurrencyInput';
 import SettingsModal from './SettingsModal';
-import { Token, NATIVE_TOKEN, USDT_TOKEN } from '../constants/tokens';
+import { Token, NATIVE_TOKEN, USDT_TOKEN, getTokenByAddress } from '../constants/tokens';
 import { useWeb3 } from '../context/Web3Context';
 import toast from 'react-hot-toast';
 
@@ -75,22 +75,18 @@ const SwapCard: React.FC = () => {
         rate = 0.85;
       } else if (fromToken.symbol === 'USDT' && toToken.symbol === 'SUPRA') {
         rate = 1.18;
+      } else if (fromToken.symbol === 'SUPRA' && toToken.symbol === 'USDC') {
+        rate = 0.84;
+      } else if (fromToken.symbol === 'USDC' && toToken.symbol === 'SUPRA') {
+        rate = 1.19;
       } else if (fromToken.symbol === 'WSUPRA' && toToken.symbol === 'SUPRA') {
         rate = 1.0;
       } else if (fromToken.symbol === 'SUPRA' && toToken.symbol === 'WSUPRA') {
         rate = 1.0;
-      } else if (fromToken.symbol === 'WSUPRA' && toToken.symbol === 'USDT') {
-        rate = 0.85;
-      } else if (fromToken.symbol === 'USDT' && toToken.symbol === 'WSUPRA') {
-        rate = 1.18;
-      } else if (fromToken.symbol === 'TOON' && toToken.symbol === 'SUPRA') {
-        rate = 0.14; // 0.12 USD / 0.85 USD
-      } else if (fromToken.symbol === 'SUPRA' && toToken.symbol === 'TOON') {
-        rate = 7.08; // 0.85 USD / 0.12 USD
-      } else if (fromToken.symbol === 'TOON' && toToken.symbol === 'USDT') {
-        rate = 0.12; // Direct TOON to USDT
-      } else if (fromToken.symbol === 'USDT' && toToken.symbol === 'TOON') {
-        rate = 8.33; // 1 USD / 0.12 USD
+      } else if (fromToken.symbol === 'USDT' && toToken.symbol === 'USDC') {
+        rate = 0.999;
+      } else if (fromToken.symbol === 'USDC' && toToken.symbol === 'USDT') {
+        rate = 1.001;
       } else {
         // Indirect pairs through SUPRA
         directPair = false;
@@ -102,12 +98,12 @@ const SwapCard: React.FC = () => {
         
         // From token to SUPRA
         if (fromToken.symbol === 'USDT') toSupraRate = 1.18;
-        else if (fromToken.symbol === 'WSUPRA') toSupraRate = 1.0;
-        else if (fromToken.symbol === 'TOON') toSupraRate = 0.14;
+        else if (fromToken.symbol === 'USDC') toSupraRate = 1.19;
+        else if (fromToken.symbol === 'TOON') toSupraRate = 7.08; // 0.12 USD / 0.85 USD
         
         // SUPRA to target token
         if (toToken.symbol === 'USDT') fromSupraRate = 0.85;
-        else if (toToken.symbol === 'WSUPRA') fromSupraRate = 1.0;
+        else if (toToken.symbol === 'USDC') fromSupraRate = 0.84;
         else if (toToken.symbol === 'TOON') fromSupraRate = 7.08;
         
         rate = toSupraRate * fromSupraRate;
@@ -156,28 +152,18 @@ const SwapCard: React.FC = () => {
     }
   };
 
-  // Handle token swap with proper state management
+  // Handle token swap
   const handleSwapTokens = () => {
-    console.log('Swapping tokens:', fromToken.symbol, '<->', toToken.symbol);
-    
-    // Store current values
     const tempToken = fromToken;
     const tempAmount = fromAmount;
     
-    // Swap tokens
     setFromToken(toToken);
     setToToken(tempToken);
-    
-    // Swap amounts
     setFromAmount(toAmount);
     setToAmount(tempAmount);
     
     // Recalculate with swapped tokens
-    setTimeout(() => {
-      if (toAmount && parseFloat(toAmount) > 0) {
-        calculateSwapDetails(toAmount);
-      }
-    }, 100);
+    setTimeout(() => calculateSwapDetails(toAmount), 100);
   };
 
   // Execute swap with enhanced simulation
