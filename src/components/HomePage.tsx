@@ -57,7 +57,7 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigateToSwap }) => {
     { label: "Total Volume", value: "$2.5B+", icon: BarChart3 },
     { label: "Active Users", value: "150K+", icon: Users },
     { label: "Trading Pairs", value: "500+", icon: Coins },
-    { label: "Liquidity Staking", value: "1,200+", icon: Droplets }
+    { label: "Liquidity Pools", value: "1,200+", icon: Droplets }
   ];
 
   const roadmapItems = [
@@ -120,7 +120,7 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigateToSwap }) => {
             whileTap={{ scale: 0.95 }}
             className="text-white hover:text-purple-300 transition-colors font-medium"
           >
-            Pools
+            Staking
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.05 }}
