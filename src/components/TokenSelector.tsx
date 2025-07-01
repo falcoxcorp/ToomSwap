@@ -29,16 +29,17 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
 
   // Create portal container on mount
   useEffect(() => {
-    // Create a dedicated container for the modal
     const container = document.createElement('div');
     container.id = 'token-selector-portal';
-    container.style.position = 'fixed';
-    container.style.top = '0';
-    container.style.left = '0';
-    container.style.width = '100%';
-    container.style.height = '100%';
-    container.style.zIndex = '999999999'; // Maximum z-index
-    container.style.pointerEvents = 'none'; // Allow clicks through when modal is closed
+    container.style.cssText = `
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      z-index: 999999999 !important;
+      pointer-events: none;
+    `;
     
     document.body.appendChild(container);
     setPortalContainer(container);
@@ -54,52 +55,69 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
   useEffect(() => {
     if (portalContainer) {
       portalContainer.style.pointerEvents = isOpen ? 'auto' : 'none';
+      portalContainer.setAttribute('data-open', isOpen.toString());
     }
   }, [isOpen, portalContainer]);
 
   const handleSelectToken = (token: Token) => {
+    console.log('Token selected:', token.symbol);
     onSelectToken(token);
     setIsOpen(false);
     setSearchQuery('');
   };
 
-  const handleOpenModal = () => {
+  const handleOpenModal = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Opening token selector modal');
     setIsOpen(true);
     // Focus search input after modal opens
     setTimeout(() => {
       searchInputRef.current?.focus();
-    }, 150);
+    }, 200);
   };
 
-  const handleCloseModal = () => {
+  const handleCloseModal = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    console.log('Closing token selector modal');
     setIsOpen(false);
     setSearchQuery('');
   };
 
-  // Handle escape key and outside clicks
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      handleCloseModal(e);
+    }
+  };
+
+  const handleTokenClick = (e: React.MouseEvent, token: Token) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Token clicked:', token.symbol);
+    handleSelectToken(token);
+  };
+
+  // Handle escape key
   useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && isOpen) {
-        handleCloseModal();
-      }
-    };
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        event.preventDefault();
+        event.stopPropagation();
         handleCloseModal();
       }
     };
 
     if (isOpen) {
-      document.addEventListener('keydown', handleEscapeKey);
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscapeKey, true);
       // Prevent body scroll when modal is open
       document.body.style.overflow = 'hidden';
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEscapeKey);
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscapeKey, true);
       document.body.style.overflow = 'unset';
     };
   }, [isOpen]);
@@ -113,8 +131,10 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
         top: 0,
         left: 0,
         right: 0,
-        bottom: 0
+        bottom: 0,
+        pointerEvents: 'auto'
       }}
+      onClick={handleBackdropClick}
     >
       {/* Backdrop */}
       <motion.div
@@ -128,7 +148,8 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
           top: 0,
           left: 0,
           right: 0,
-          bottom: 0
+          bottom: 0,
+          pointerEvents: 'auto'
         }}
       />
       
@@ -153,8 +174,10 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
           zIndex: 999999999,
           position: 'relative',
           backgroundColor: 'rgb(17, 24, 39)',
-          backdropFilter: 'blur(24px)'
+          backdropFilter: 'blur(24px)',
+          pointerEvents: 'auto'
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Decorative top border */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-blue-500 to-purple-500" />
@@ -171,22 +194,22 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                 <p className="text-xs sm:text-sm text-gray-300">Choose from available tokens</p>
               </div>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.1, rotate: 90 }}
-              whileTap={{ scale: 0.9 }}
+            <button
               onClick={handleCloseModal}
               className="
                 p-2 sm:p-2.5 hover:bg-white/20 rounded-xl transition-all duration-200
                 border border-white/30 hover:border-white/50 bg-white/10
+                cursor-pointer
               "
+              style={{ pointerEvents: 'auto' }}
             >
               <X className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-            </motion.button>
+            </button>
           </div>
           
           {/* Search Input */}
           <div className="relative">
-            <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-300" />
+            <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-300 pointer-events-none" />
             <input
               ref={searchInputRef}
               type="text"
@@ -199,25 +222,28 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                 focus:border-purple-400 focus:bg-white/20
                 transition-all duration-200 text-sm sm:text-base
               "
-              style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)' }}
+              style={{ 
+                backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                pointerEvents: 'auto'
+              }}
             />
             {searchQuery && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
+              <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-white/20 rounded-lg"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-white/20 rounded-lg cursor-pointer"
+                style={{ pointerEvents: 'auto' }}
               >
                 <X className="w-3 h-3 sm:w-4 sm:h-4 text-gray-300" />
-              </motion.button>
+              </button>
             )}
           </div>
         </div>
 
         {/* Token List */}
-        <div className="max-h-80 sm:max-h-96 overflow-y-auto bg-gray-900/95">
+        <div 
+          className="max-h-80 sm:max-h-96 overflow-y-auto bg-gray-900/95"
+          style={{ pointerEvents: 'auto' }}
+        >
           {filteredTokens.length > 0 ? (
             <div className="p-2">
               {filteredTokens.map((token, index) => (
@@ -231,19 +257,22 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                     backgroundColor: 'rgba(255, 255, 255, 0.15)'
                   }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => handleSelectToken(token)}
+                  onClick={(e) => handleTokenClick(e, token)}
                   className="
                     w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 text-left rounded-2xl
                     hover:bg-white/10 transition-all duration-200 mb-2
                     border border-transparent hover:border-white/30
-                    group relative overflow-hidden
+                    group relative overflow-hidden cursor-pointer
                   "
-                  style={{ backgroundColor: 'transparent' }}
+                  style={{ 
+                    backgroundColor: 'transparent',
+                    pointerEvents: 'auto'
+                  }}
                 >
                   {/* Background gradient on hover */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 to-blue-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 to-blue-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
                   
-                  <div className="relative">
+                  <div className="relative pointer-events-none">
                     <img 
                       src={token.logoURI} 
                       alt={token.symbol}
@@ -263,7 +292,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                     )}
                   </div>
                   
-                  <div className="flex-1 min-w-0 relative">
+                  <div className="flex-1 min-w-0 relative pointer-events-none">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-bold text-white text-base sm:text-lg truncate group-hover:text-purple-200 transition-colors">
                         {token.symbol}
@@ -287,7 +316,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                   </div>
 
                   {/* Balance placeholder */}
-                  <div className="text-right relative">
+                  <div className="text-right relative pointer-events-none">
                     <div className="text-xs sm:text-sm font-semibold text-white">0.0000</div>
                     <div className="text-xs text-gray-400">$0.00</div>
                   </div>
@@ -318,7 +347,10 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
           <div className="text-center">
             <p className="text-xs text-gray-300">
               Can't find your token? 
-              <button className="text-purple-300 hover:text-purple-200 ml-1 font-medium transition-colors">
+              <button 
+                className="text-purple-300 hover:text-purple-200 ml-1 font-medium transition-colors cursor-pointer"
+                style={{ pointerEvents: 'auto' }}
+              >
                 Import custom token
               </button>
             </p>
@@ -332,17 +364,16 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
     <>
       {/* Token Selector Button */}
       <div className="relative">
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+        <button
           onClick={handleOpenModal}
           className="
             flex items-center gap-2 px-2 sm:px-3 py-2 sm:py-2.5 rounded-xl
             bg-gradient-to-r from-white/5 to-white/10 hover:from-white/10 hover:to-white/15
             border border-white/20 hover:border-white/30
             transition-all duration-200 min-w-[90px] sm:min-w-[110px] max-w-[120px] sm:max-w-[140px]
-            shadow-lg hover:shadow-xl
+            shadow-lg hover:shadow-xl cursor-pointer
           "
+          style={{ pointerEvents: 'auto' }}
         >
           <div className="relative">
             <img 
@@ -364,7 +395,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
           >
             <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
           </motion.div>
-        </motion.button>
+        </button>
       </div>
 
       {/* REACT PORTAL MODAL - MAXIMUM Z-INDEX */}
