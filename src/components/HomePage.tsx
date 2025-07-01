@@ -57,7 +57,7 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigateToSwap }) => {
     { label: "Total Volume", value: "$2.5B+", icon: BarChart3 },
     { label: "Active Users", value: "150K+", icon: Users },
     { label: "Trading Pairs", value: "500+", icon: Coins },
-    { label: "Liquidity Pools", value: "1,200+", icon: Droplets }
+    { label: "Liquidity Staking", value: "1,200+", icon: Droplets }
   ];
 
   const roadmapItems = [
