@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, ArrowLeft, Info, AlertTriangle, Droplets } from 'lucide-react';
+import { Plus, ArrowLeft, Info, AlertTriangle, Droplets, Zap } from 'lucide-react';
 import CurrencyInput from './CurrencyInput';
 import { Token, NATIVE_TOKEN, USDT_TOKEN } from '../constants/tokens';
 import { useWeb3 } from '../context/Web3Context';
@@ -11,7 +11,7 @@ interface LiquidityCardProps {
 }
 
 const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
-  const { account, signer, chainId } = useWeb3();
+  const { account, signer, chainId, provider } = useWeb3();
   const [tokenA, setTokenA] = useState<Token>(NATIVE_TOKEN);
   const [tokenB, setTokenB] = useState<Token>(USDT_TOKEN);
   const [amountA, setAmountA] = useState('');
@@ -22,11 +22,17 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
   const [yourShare, setYourShare] = useState<number>(0);
   const [lpTokensToReceive, setLpTokensToReceive] = useState<string>('');
   const [priceImpact, setPriceImpact] = useState<number>(0);
+  const [isCalculating, setIsCalculating] = useState(false);
 
-  // Validate liquidity addition
+  // Enhanced validation for liquidity addition
   const validateLiquidity = () => {
     if (!account) {
-      toast.error('Please connect your wallet');
+      toast.error('Please connect your wallet first');
+      return false;
+    }
+
+    if (!provider || !signer) {
+      toast.error('Wallet connection error. Please reconnect your wallet.');
       return false;
     }
 
@@ -41,51 +47,109 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
     }
 
     if (chainId !== 8) {
-      toast.error('Please switch to Supra network');
+      toast.error('Please switch to Supra network (Chain ID: 8)');
+      return false;
+    }
+
+    // Check for minimum amounts
+    const minAmountA = parseFloat(amountA);
+    const minAmountB = parseFloat(amountB);
+    
+    if (minAmountA < 0.000001) {
+      toast.error(`Minimum ${tokenA.symbol} amount is 0.000001`);
+      return false;
+    }
+
+    if (minAmountB < 0.000001) {
+      toast.error(`Minimum ${tokenB.symbol} amount is 0.000001`);
       return false;
     }
 
     return true;
   };
 
-  // Calculate liquidity details
-  const calculateLiquidityDetails = () => {
+  // Enhanced liquidity calculation with better simulation
+  const calculateLiquidityDetails = async () => {
     if (!amountA || !amountB || parseFloat(amountA) <= 0 || parseFloat(amountB) <= 0) {
       setLpTokensToReceive('');
       setPriceImpact(0);
       setYourShare(0);
+      setPoolRatio('1:1');
       return;
     }
 
-    const amtA = parseFloat(amountA);
-    const amtB = parseFloat(amountB);
+    setIsCalculating(true);
 
-    // Mock pool calculations
-    const totalLiquidity = 1000000; // Mock total pool liquidity
-    const lpTokens = Math.sqrt(amtA * amtB); // Geometric mean for LP tokens
-    const share = (lpTokens / (totalLiquidity + lpTokens)) * 100;
-    
-    // Calculate price impact for large additions
-    let impact = 0;
-    if (amtA > 10000 || amtB > 10000) impact = 2.5;
-    else if (amtA > 5000 || amtB > 5000) impact = 1.2;
-    else if (amtA > 1000 || amtB > 1000) impact = 0.5;
+    try {
+      const amtA = parseFloat(amountA);
+      const amtB = parseFloat(amountB);
 
-    setLpTokensToReceive(lpTokens.toFixed(6));
-    setPriceImpact(impact);
-    setYourShare(share);
+      // Enhanced pool simulation based on token pairs
+      let mockTotalLiquidity = 1000000;
+      let baseRatio = 1.0;
 
-    // Update pool ratio
-    const ratio = (amtA / amtB).toFixed(4);
-    setPoolRatio(`${ratio}:1`);
+      // Realistic ratios based on token pairs
+      if (tokenA.symbol === 'SUPRA' && tokenB.symbol === 'USDT') {
+        baseRatio = 0.85; // 1 SUPRA = 0.85 USDT
+        mockTotalLiquidity = 2500000;
+      } else if (tokenA.symbol === 'USDT' && tokenB.symbol === 'SUPRA') {
+        baseRatio = 1.18; // 1 USDT = 1.18 SUPRA
+        mockTotalLiquidity = 2500000;
+      } else if (tokenA.symbol === 'WSUPRA') {
+        baseRatio = tokenB.symbol === 'SUPRA' ? 1.0 : 0.85;
+        mockTotalLiquidity = 1800000;
+      } else if (tokenA.symbol === 'TOON') {
+        baseRatio = 0.12; // TOON price in USD
+        mockTotalLiquidity = 500000;
+      }
+
+      // Calculate LP tokens using constant product formula
+      const lpTokens = Math.sqrt(amtA * amtB * baseRatio);
+      
+      // Calculate pool share
+      const share = (lpTokens / (mockTotalLiquidity + lpTokens)) * 100;
+      
+      // Calculate price impact for large additions
+      let impact = 0;
+      const liquidityRatio = (amtA + amtB) / mockTotalLiquidity;
+      
+      if (liquidityRatio > 0.1) impact = 5.5;
+      else if (liquidityRatio > 0.05) impact = 3.2;
+      else if (liquidityRatio > 0.01) impact = 1.8;
+      else if (liquidityRatio > 0.005) impact = 0.8;
+      else if (liquidityRatio > 0.001) impact = 0.3;
+      else impact = 0.1;
+
+      // Update pool ratio
+      const ratio = (amtA / amtB).toFixed(4);
+      
+      setLpTokensToReceive(lpTokens.toFixed(6));
+      setPriceImpact(impact);
+      setYourShare(share);
+      setPoolRatio(`${ratio}:1`);
+
+      // Check if pool exists (simulate based on token pair popularity)
+      const popularPairs = ['SUPRA-USDT', 'WSUPRA-SUPRA', 'SUPRA-TOON'];
+      const pairKey = `${tokenA.symbol}-${tokenB.symbol}`;
+      setPoolExists(popularPairs.includes(pairKey) || popularPairs.includes(`${tokenB.symbol}-${tokenA.symbol}`));
+
+    } catch (error) {
+      console.error('Error calculating liquidity details:', error);
+      setLpTokensToReceive('');
+      setPriceImpact(0);
+      setYourShare(0);
+      setPoolRatio('1:1');
+    } finally {
+      setIsCalculating(false);
+    }
   };
 
-  // Handle amount changes with auto-calculation
+  // Handle amount changes with auto-calculation for existing pools
   const handleAmountAChange = (value: string) => {
     setAmountA(value);
     
     if (poolExists && value && parseFloat(value) > 0) {
-      // Auto-calculate amount B based on pool ratio
+      // Auto-calculate amount B based on current pool ratio
       const calculatedB = (parseFloat(value) * 1.18).toFixed(6); // Mock ratio
       setAmountB(calculatedB);
     }
@@ -95,22 +159,35 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
     setAmountB(value);
     
     if (poolExists && value && parseFloat(value) > 0) {
-      // Auto-calculate amount A based on pool ratio
+      // Auto-calculate amount A based on current pool ratio
       const calculatedA = (parseFloat(value) * 0.85).toFixed(6); // Mock ratio
       setAmountA(calculatedA);
     }
   };
 
-  // Add liquidity
+  // Enhanced add liquidity with comprehensive error handling
   const handleAddLiquidity = async () => {
     if (!validateLiquidity()) return;
 
     setIsLoading(true);
     try {
-      // Simulate transaction
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Enhanced transaction simulation
+      toast.loading('Preparing liquidity transaction...', { id: 'liquidity-loading' });
       
-      toast.success(`Successfully added liquidity! Received ${lpTokensToReceive} LP tokens`);
+      // Simulate approval process
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      toast.loading('Approving tokens...', { id: 'liquidity-loading' });
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      toast.loading('Adding liquidity to pool...', { id: 'liquidity-loading' });
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      toast.dismiss('liquidity-loading');
+      toast.success(
+        `Successfully added liquidity! Received ${lpTokensToReceive} LP tokens for ${tokenA.symbol}/${tokenB.symbol} pool`,
+        { duration: 6000 }
+      );
       
       // Reset form
       setAmountA('');
@@ -118,26 +195,28 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
       setLpTokensToReceive('');
       setPriceImpact(0);
       setYourShare(0);
+      setPoolRatio('1:1');
       
     } catch (error) {
       console.error('Add liquidity failed:', error);
+      toast.dismiss('liquidity-loading');
       toast.error('Failed to add liquidity. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Update calculations when amounts change
+  // Update calculations when amounts or tokens change
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       calculateLiquidityDetails();
-    }, 300);
+    }, 500);
 
     return () => clearTimeout(timeoutId);
   }, [amountA, amountB, tokenA, tokenB]);
 
   const isAddDisabled = !account || !amountA || !amountB || 
-    parseFloat(amountA) <= 0 || parseFloat(amountB) <= 0 || isLoading;
+    parseFloat(amountA) <= 0 || parseFloat(amountB) <= 0 || isLoading || isCalculating;
 
   return (
     <motion.div
@@ -178,12 +257,31 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
         </motion.button>
       </div>
 
+      {/* Network Warning */}
+      {chainId !== 8 && account && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-2"
+        >
+          <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+          <span className="text-sm text-red-300">
+            Please switch to Supra network to add liquidity
+          </span>
+        </motion.div>
+      )}
+
       {/* Pool Status */}
       <div className="mb-4 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
         <div className="flex items-center gap-2 text-sm text-blue-300">
-          <div className="w-2 h-2 bg-blue-400 rounded-full" />
-          {poolExists ? 'Pool exists' : 'New pool will be created'}
+          <div className={`w-2 h-2 rounded-full ${poolExists ? 'bg-blue-400' : 'bg-orange-400'}`} />
+          {poolExists ? `${tokenA.symbol}/${tokenB.symbol} pool exists` : 'New pool will be created'}
         </div>
+        {!poolExists && (
+          <div className="text-xs text-blue-200 mt-1">
+            You'll be the first liquidity provider for this pair
+          </div>
+        )}
       </div>
 
       {/* Liquidity Inputs */}
@@ -195,7 +293,6 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
           selectedToken={tokenA}
           onTokenChange={setTokenA}
           otherToken={tokenB}
-          balance="0.0000"
         />
 
         <div className="flex justify-center">
@@ -203,9 +300,17 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
             whileHover={{ scale: 1.1 }}
             className="
               p-2 sm:p-3 rounded-xl bg-white/5 border border-white/10
+              flex items-center justify-center
             "
           >
             <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400" />
+            {isCalculating && (
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="absolute w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full"
+              />
+            )}
           </motion.div>
         </div>
 
@@ -216,12 +321,11 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
           selectedToken={tokenB}
           onTokenChange={setTokenB}
           otherToken={tokenA}
-          balance="0.0000"
         />
       </div>
 
       {/* Liquidity Details */}
-      {amountA && amountB && parseFloat(amountA) > 0 && parseFloat(amountB) > 0 && (
+      {amountA && amountB && parseFloat(amountA) > 0 && parseFloat(amountB) > 0 && !isCalculating && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
@@ -229,10 +333,34 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
         >
           {/* Price Impact Warning */}
           {priceImpact > 1 && (
-            <div className="p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0" />
-              <span className="text-sm text-yellow-400">
-                Price Impact: {priceImpact.toFixed(2)}%
+            <div className={`
+              p-3 rounded-xl border flex items-center gap-2
+              ${priceImpact > 5 
+                ? 'bg-red-500/10 border-red-500/20' 
+                : priceImpact > 3
+                ? 'bg-orange-500/10 border-orange-500/20'
+                : 'bg-yellow-500/10 border-yellow-500/20'
+              }
+            `}>
+              <AlertTriangle className={`
+                w-4 h-4 flex-shrink-0
+                ${priceImpact > 5 
+                  ? 'text-red-400' 
+                  : priceImpact > 3
+                  ? 'text-orange-400'
+                  : 'text-yellow-400'
+                }
+              `} />
+              <span className={`
+                text-sm
+                ${priceImpact > 5 
+                  ? 'text-red-400' 
+                  : priceImpact > 3
+                  ? 'text-orange-400'
+                  : 'text-yellow-400'
+                }
+              `}>
+                {priceImpact > 5 ? 'High' : priceImpact > 3 ? 'Medium' : 'Low'} Price Impact: {priceImpact.toFixed(2)}%
               </span>
             </div>
           )}
@@ -270,6 +398,24 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
         </motion.div>
       )}
 
+      {/* Calculating state */}
+      {isCalculating && amountA && amountB && parseFloat(amountA) > 0 && parseFloat(amountB) > 0 && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="mt-4 p-4 rounded-xl bg-white/5 border border-white/10 text-center"
+        >
+          <div className="flex items-center justify-center gap-2 text-gray-400">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full"
+            />
+            <span className="text-sm">Calculating liquidity details...</span>
+          </div>
+        </motion.div>
+      )}
+
       {/* Add Liquidity Button */}
       <motion.button
         whileHover={{ scale: 1.02 }}
@@ -283,6 +429,7 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
           disabled:from-gray-600 disabled:to-gray-700
           disabled:cursor-not-allowed text-white
           transition-all duration-200 relative overflow-hidden
+          flex items-center justify-center gap-2
         "
       >
         {isLoading && (
@@ -292,15 +439,27 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
             className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
           />
         )}
-        <span className="relative">
+        <span className="relative flex items-center gap-2">
+          {isLoading && <Zap className="w-4 h-4 animate-pulse" />}
           {!account 
             ? 'Connect Wallet'
+            : chainId !== 8
+            ? 'Switch to Supra Network'
             : isLoading 
             ? 'Adding Liquidity...'
+            : isCalculating
+            ? 'Calculating...'
             : 'Add Liquidity'
           }
         </span>
       </motion.button>
+
+      {/* Help Text */}
+      <div className="mt-4 text-xs text-gray-400 text-center">
+        <p>
+          By adding liquidity you'll earn 0.3% of all trades on this pair proportional to your share of the pool.
+        </p>
+      </div>
     </motion.div>
   );
 };
