@@ -12,6 +12,7 @@ interface CurrencyInputProps {
   otherToken?: Token;
   balance?: string;
   readOnly?: boolean;
+  showMaxButton?: boolean;
 }
 
 const CurrencyInput: React.FC<CurrencyInputProps> = ({
@@ -21,21 +22,67 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
   selectedToken,
   onTokenChange,
   otherToken,
-  balance,
-  readOnly = false
+  balance = "0.0000",
+  readOnly = false,
+  showMaxButton = true
 }) => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
-    if (inputValue === '' || /^\d*\.?\d*$/.test(inputValue)) {
-      onValueChange(inputValue);
+    
+    // Allow empty string
+    if (inputValue === '') {
+      onValueChange('');
+      return;
+    }
+    
+    // Validate numeric input with decimal support
+    if (/^\d*\.?\d*$/.test(inputValue)) {
+      // Prevent multiple decimal points
+      const decimalCount = (inputValue.match(/\./g) || []).length;
+      if (decimalCount <= 1) {
+        // Limit decimal places to token decimals (usually 6-18)
+        const parts = inputValue.split('.');
+        if (parts[1] && parts[1].length > selectedToken.decimals) {
+          return; // Don't update if too many decimal places
+        }
+        onValueChange(inputValue);
+      }
     }
   };
 
   const handleMaxClick = () => {
-    if (balance) {
+    if (balance && parseFloat(balance) > 0) {
       onValueChange(balance);
     }
   };
+
+  const formatBalance = (bal: string) => {
+    const num = parseFloat(bal);
+    if (num === 0) return '0.0000';
+    if (num < 0.0001) return '< 0.0001';
+    if (num < 1) return num.toFixed(6);
+    if (num < 1000) return num.toFixed(4);
+    return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  };
+
+  const getUSDValue = () => {
+    if (!value || parseFloat(value) <= 0) return null;
+    
+    // Mock USD prices (in real app, fetch from price API)
+    const mockPrices: { [key: string]: number } = {
+      'SUPRA': 0.85,
+      'WSUPRA': 0.85,
+      'USDT': 1.00,
+      'TOON': 0.12
+    };
+    
+    const price = mockPrices[selectedToken.symbol] || 1.0;
+    const usdValue = parseFloat(value) * price;
+    
+    return usdValue;
+  };
+
+  const usdValue = getUSDValue();
 
   return (
     <motion.div
@@ -51,14 +98,15 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
       {/* Decorative gradient border */}
       <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-600/10 via-transparent to-blue-600/10 opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
       
+      {/* Header with label and balance */}
       <div className="flex justify-between items-center mb-3 relative">
         <span className="text-sm font-medium text-gray-300">{label}</span>
         {balance && (
           <div className="flex items-center gap-2">
             <span className="text-xs sm:text-sm text-gray-400">
-              Balance: <span className="font-semibold text-white">{parseFloat(balance).toFixed(4)}</span>
+              Balance: <span className="font-semibold text-white">{formatBalance(balance)}</span>
             </span>
-            {!readOnly && (
+            {!readOnly && showMaxButton && parseFloat(balance) > 0 && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -78,6 +126,7 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
         )}
       </div>
 
+      {/* Input and token selector */}
       <div className="flex items-center gap-3 sm:gap-4 relative">
         <input
           type="text"
@@ -90,6 +139,8 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
             placeholder-gray-500 focus:outline-none min-w-0
             transition-all duration-200
           "
+          autoComplete="off"
+          spellCheck="false"
         />
         
         <div className="flex-shrink-0">
@@ -101,7 +152,8 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
         </div>
       </div>
 
-      {value && parseFloat(value) > 0 && (
+      {/* USD value display */}
+      {usdValue && usdValue > 0 && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
@@ -110,9 +162,24 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-400">USD Value</span>
             <span className="text-gray-300 font-semibold">
-              ≈ ${(parseFloat(value) * 1.0).toFixed(2)}
+              ≈ ${usdValue < 0.01 ? '< $0.01' : usdValue.toLocaleString(undefined, { 
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 2 
+              })}
             </span>
           </div>
+        </motion.div>
+      )}
+
+      {/* Input validation feedback */}
+      {value && parseFloat(value) > parseFloat(balance) && !readOnly && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="mt-2 text-xs text-red-400 flex items-center gap-1"
+        >
+          <span>⚠️</span>
+          <span>Insufficient {selectedToken.symbol} balance</span>
         </motion.div>
       )}
     </motion.div>
