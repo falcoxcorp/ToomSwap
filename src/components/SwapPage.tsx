@@ -54,12 +54,12 @@ const SwapPage: React.FC<SwapPageProps> = ({ onNavigateHome }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col relative">
       {/* Header */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 flex items-center justify-between p-4 sm:p-6"
+        className="relative z-40 flex items-center justify-between p-4 sm:p-6"
       >
         <div className="flex items-center gap-4">
           <motion.button
@@ -113,7 +113,7 @@ const SwapPage: React.FC<SwapPageProps> = ({ onNavigateHome }) => {
       </motion.header>
 
       {/* Main Content */}
-      <main className="relative z-10 container mx-auto px-4 sm:px-6 pb-8 sm:pb-12 flex-1">
+      <main className="relative z-30 container mx-auto px-4 sm:px-6 pb-8 sm:pb-12 flex-1">
         <div className="max-w-sm sm:max-w-md lg:max-w-2xl mx-auto">
           <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
           {renderContent()}
@@ -127,7 +127,7 @@ const SwapPage: React.FC<SwapPageProps> = ({ onNavigateHome }) => {
             fixed bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6 mx-auto max-w-sm
             p-3 sm:p-4 rounded-2xl bg-green-500/10 backdrop-blur-sm
             border border-green-500/20 text-center
-            lg:left-auto lg:right-6 lg:max-w-sm
+            lg:left-auto lg:right-6 lg:max-w-sm z-20
           "
           style={{ display: 'none' }}
         >

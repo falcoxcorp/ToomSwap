@@ -11,7 +11,7 @@ export interface Token {
 export const NATIVE_TOKEN: Token = {
   name: "Supra",
   symbol: "SUPRA",
-  address: "0x0000000000000000000000000000000000000000", // Native token address
+  address: "0x0000000000000000000000000000000000000000",
   chainId: 8,
   decimals: 18,
   logoURI: "https://photos.pinksale.finance/file/pinksale-logo-upload/1751321928620-ab24aa4fccb165dc3ea539fa6f40d2c9.png"
@@ -37,7 +37,6 @@ export const USDT_TOKEN: Token = {
   logoURI: "https://cryptologos.cc/logos/tether-usdt-logo.png"
 };
 
-
 // ToonSwap native token
 export const TOON_TOKEN: Token = {
   name: "ToonSwap Token",
@@ -48,42 +47,17 @@ export const TOON_TOKEN: Token = {
   logoURI: "https://photos.pinksale.finance/file/pinksale-logo-upload/1751326180150-96821ac49491ed824047c2ffa1217f78.png"
 };
 
-// DAI token on Supra testnet
-export const DAI_TOKEN: Token = {
-  name: "Dai Stablecoin",
-  symbol: "DAI",
-  address: "0x6b175474e89094c44da98b954eedeac495271d0f",
-  chainId: 8,
-  decimals: 18,
-  logoURI: "https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.png"
-};
-
-// WETH token on Supra testnet
-export const WETH_TOKEN: Token = {
-  name: "Wrapped Ether",
-  symbol: "WETH",
-  address: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-  chainId: 8,
-  decimals: 18,
-  logoURI: "https://cryptologos.cc/logos/ethereum-eth-logo.png"
-};
-
-// All available tokens
+// Only the 4 tokens requested: SUPRA, WSUPRA, USDT, TOON
 export const DEFAULT_TOKENS: Token[] = [
   NATIVE_TOKEN,    // SUPRA
   WSUPRA_TOKEN,    // WSUPRA
   USDT_TOKEN,      // USDT
-  USDC_TOKEN,      // USDC
-  TOON_TOKEN,      // TOON
-  DAI_TOKEN,       // DAI
-  WETH_TOKEN       // WETH
+  TOON_TOKEN       // TOON
 ];
 
 // Token lists by category
 export const STABLECOINS: Token[] = [
-  USDT_TOKEN,
-  USDC_TOKEN,
-  DAI_TOKEN
+  USDT_TOKEN
 ];
 
 export const NATIVE_TOKENS: Token[] = [

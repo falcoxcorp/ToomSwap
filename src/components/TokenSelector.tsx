@@ -111,12 +111,12 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
         </motion.button>
       </div>
 
-      {/* Full Screen Modal Portal */}
+      {/* Full Screen Modal Portal with MAXIMUM Z-INDEX */}
       <AnimatePresence>
         {isOpen && (
           <div 
             className="fixed inset-0 flex items-center justify-center p-4" 
-            style={{ zIndex: 999999 }}
+            style={{ zIndex: 999999999 }} // MAXIMUM Z-INDEX
           >
             {/* Enhanced Backdrop */}
             <motion.div
@@ -124,6 +124,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              style={{ zIndex: 999999998 }}
             />
             
             {/* Modal Container */}
@@ -144,6 +145,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                 backdrop-blur-2xl border border-white/20 rounded-3xl
                 shadow-2xl relative
               "
+              style={{ zIndex: 999999999 }} // MAXIMUM Z-INDEX
             >
               {/* Decorative top border */}
               <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500/60 to-transparent" />
