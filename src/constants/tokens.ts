@@ -34,7 +34,7 @@ export const USDT_TOKEN: Token = {
   address: "0x900101d06a7426441ae63e9ab3b9b0f63be145f1",
   chainId: 8,
   decimals: 6,
-  logoURI: "https://cryptologos.cc/logos/tether-usdt-logo.png"
+  logoURI: "https://pipiswap.finance/images/tokens/0x900101d06a7426441ae63e9ab3b9b0f63be145f1.png"
 };
 
 // ToonSwap native token
