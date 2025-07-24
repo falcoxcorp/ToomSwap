@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ChevronDown, X, Star } from 'lucide-react';
+import { Search, ChevronDown, X, Star, Plus, Trash2, AlertCircle, CheckCircle } from 'lucide-react';
 import { Token } from '../constants/tokens';
 import { useWeb3 } from '../context/Web3Context';
+import { useCustomTokens } from '../hooks/useCustomTokens';
+import toast from 'react-hot-toast';
 
 interface TokenSelectorProps {
   selectedToken: Token;
@@ -16,16 +18,22 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
   otherToken 
 }) => {
   const { getCurrentNetworkTokens } = useWeb3();
+  const { customTokens, isLoading: isLoadingCustom, addCustomToken, removeCustomToken, getAllTokens } = useCustomTokens();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAddToken, setShowAddToken] = useState(false);
+  const [newTokenAddress, setNewTokenAddress] = useState('');
+  const [isAddingToken, setIsAddingToken] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  const availableTokens = getCurrentNetworkTokens();
+  const defaultTokens = getCurrentNetworkTokens();
+  const availableTokens = getAllTokens(defaultTokens);
   const filteredTokens = availableTokens.filter(token => 
     token.address !== otherToken?.address &&
     (token.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-     token.symbol.toLowerCase().includes(searchQuery.toLowerCase()))
+     token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+     token.address.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const handleSelectToken = (token: Token) => {
@@ -45,6 +53,37 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
   const handleCloseModal = () => {
     setIsOpen(false);
     setSearchQuery('');
+    setShowAddToken(false);
+    setNewTokenAddress('');
+  };
+
+  // Handle add custom token
+  const handleAddCustomToken = async () => {
+    if (!newTokenAddress.trim()) {
+      toast.error('Please enter a token contract address');
+      return;
+    }
+
+    setIsAddingToken(true);
+    try {
+      const success = await addCustomToken(newTokenAddress.trim());
+      if (success) {
+        setNewTokenAddress('');
+        setShowAddToken(false);
+        setSearchQuery(''); // Clear search to show new token
+      }
+    } catch (error) {
+      console.error('Error adding token:', error);
+    } finally {
+      setIsAddingToken(false);
+    }
+  };
+
+  // Handle remove custom token
+  const handleRemoveCustomToken = (address: string, symbol: string) => {
+    if (window.confirm(`Are you sure you want to remove ${symbol} from your token list?`)) {
+      removeCustomToken(address);
+    }
   };
 
   // Handle escape key and outside clicks
@@ -305,6 +344,172 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                       </motion.button>
                     )}
                   </div>
+
+                  {/* Add Custom Token Button */}
+                  <div style={{ padding: '0 16px 16px' }}>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setShowAddToken(!showAddToken)}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%)',
+                        border: '1px solid rgba(139, 92, 246, 0.4)',
+                        borderRadius: '12px',
+                        color: 'rgb(196, 181, 253)',
+                        fontSize: '14px',
+                        fontWeight: 'medium',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <Plus style={{ width: '16px', height: '16px' }} />
+                      {showAddToken ? 'Cancel' : 'Add Custom Token'}
+                    </motion.button>
+                  </div>
+
+                  {/* Add Custom Token Form */}
+                  <AnimatePresence>
+                    {showAddToken && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        style={{ padding: '0 16px 16px' }}
+                      >
+                        <div style={{
+                          padding: '16px',
+                          background: 'rgba(139, 92, 246, 0.1)',
+                          border: '1px solid rgba(139, 92, 246, 0.3)',
+                          borderRadius: '12px'
+                        }}>
+                          <div style={{ marginBottom: '12px' }}>
+                            <label style={{ 
+                              display: 'block', 
+                              fontSize: '12px', 
+                              color: 'rgb(196, 181, 253)', 
+                              marginBottom: '8px',
+                              fontWeight: 'medium'
+                            }}>
+                              Token Contract Address
+                            </label>
+                            <input
+                              type="text"
+                              value={newTokenAddress}
+                              onChange={(e) => setNewTokenAddress(e.target.value)}
+                              placeholder="0x..."
+                              style={{
+                                width: '100%',
+                                padding: '12px',
+                                background: 'rgba(255, 255, 255, 0.1)',
+                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                borderRadius: '8px',
+                                color: 'white',
+                                fontSize: '14px',
+                                fontFamily: 'monospace',
+                                outline: 'none'
+                              }}
+                              onFocus={(e) => {
+                                e.target.style.borderColor = 'rgba(139, 92, 246, 0.7)';
+                              }}
+                              onBlur={(e) => {
+                                e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                              }}
+                            />
+                          </div>
+                          
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={handleAddCustomToken}
+                              disabled={isAddingToken || !newTokenAddress.trim()}
+                              style={{
+                                flex: 1,
+                                padding: '10px 16px',
+                                background: isAddingToken || !newTokenAddress.trim() 
+                                  ? 'rgba(107, 114, 128, 0.5)' 
+                                  : 'linear-gradient(135deg, rgba(139, 92, 246, 0.8) 0%, rgba(59, 130, 246, 0.8) 100%)',
+                                border: 'none',
+                                borderRadius: '8px',
+                                color: 'white',
+                                fontSize: '12px',
+                                fontWeight: 'medium',
+                                cursor: isAddingToken || !newTokenAddress.trim() ? 'not-allowed' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px'
+                              }}
+                            >
+                              {isAddingToken ? (
+                                <>
+                                  <div style={{
+                                    width: '12px',
+                                    height: '12px',
+                                    border: '2px solid rgba(255, 255, 255, 0.3)',
+                                    borderTop: '2px solid white',
+                                    borderRadius: '50%',
+                                    animation: 'spin 1s linear infinite'
+                                  }} />
+                                  Adding...
+                                </>
+                              ) : (
+                                <>
+                                  <Plus style={{ width: '12px', height: '12px' }} />
+                                  Add Token
+                                </>
+                              )}
+                            </motion.button>
+                            
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => {
+                                setShowAddToken(false);
+                                setNewTokenAddress('');
+                              }}
+                              style={{
+                                padding: '10px 16px',
+                                background: 'rgba(255, 255, 255, 0.1)',
+                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                borderRadius: '8px',
+                                color: 'rgb(156, 163, 175)',
+                                fontSize: '12px',
+                                fontWeight: 'medium',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Cancel
+                            </motion.button>
+                          </div>
+                          
+                          <div style={{ 
+                            marginTop: '12px', 
+                            padding: '8px 12px', 
+                            background: 'rgba(59, 130, 246, 0.1)',
+                            border: '1px solid rgba(59, 130, 246, 0.3)',
+                            borderRadius: '8px'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                              <AlertCircle style={{ width: '12px', height: '12px', color: 'rgb(96, 165, 250)' }} />
+                              <span style={{ fontSize: '11px', color: 'rgb(96, 165, 250)', fontWeight: 'medium' }}>
+                                Important
+                              </span>
+                            </div>
+                            <p style={{ fontSize: '10px', color: 'rgb(147, 197, 253)', lineHeight: '1.4', margin: 0 }}>
+                              Only add tokens you trust. Custom tokens are stored locally and will persist until you remove them.
+                            </p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 {/* Token List */}
@@ -425,6 +630,29 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                               >
                                 {token.symbol}
                               </span>
+                              
+                              {/* Custom token indicator */}
+                              {(token as any).isCustom && (
+                                <motion.div
+                                  initial={{ opacity: 0, x: -10 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  style={{
+                                    padding: '2px 6px',
+                                    background: 'rgba(59, 130, 246, 0.3)',
+                                    border: '1px solid rgba(59, 130, 246, 0.5)',
+                                    borderRadius: '6px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                >
+                                  <Plus style={{ width: '10px', height: '10px', color: 'rgb(147, 197, 253)' }} />
+                                  <span style={{ fontSize: '10px', color: 'rgb(147, 197, 253)', fontWeight: 'medium' }}>
+                                    Custom
+                                  </span>
+                                </motion.div>
+                              )}
+                              
                               {selectedToken.address === token.address && (
                                 <motion.div
                                   initial={{ opacity: 0, x: -10 }}
@@ -465,14 +693,40 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                             </div>
                           </div>
 
-                          {/* Balance placeholder */}
-                          <div style={{ textAlign: 'right', position: 'relative' }}>
+                          {/* Balance and actions */}
+                          <div style={{ textAlign: 'right', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
                             <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'white' }}>
                               0.0000
                             </div>
                             <div style={{ fontSize: '12px', color: 'rgb(156, 163, 175)' }}>
                               $0.00
                             </div>
+                            
+                            {/* Remove custom token button */}
+                            {(token as any).isCustom && (
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveCustomToken(token.address, token.symbol);
+                                }}
+                                style={{
+                                  padding: '4px',
+                                  background: 'rgba(239, 68, 68, 0.2)',
+                                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                                  borderRadius: '6px',
+                                  color: 'rgb(248, 113, 113)',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                                title={`Remove ${token.symbol}`}
+                              >
+                                <Trash2 style={{ width: '12px', height: '12px' }} />
+                              </motion.button>
+                            )}
                           </div>
                         </motion.button>
                       ))}
@@ -515,26 +769,37 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                     background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.98) 0%, rgba(31, 41, 55, 0.98) 100%)'
                   }}
                 >
-                  <div style={{ textAlign: 'center' }}>
+                  <div style={{ textAlign: 'center', marginBottom: customTokens.length > 0 ? '12px' : '0' }}>
                     <p style={{ fontSize: '12px', color: 'rgb(156, 163, 175)', margin: 0 }}>
-                      Can't find your token? 
-                      <button 
-                        style={{ 
-                          color: 'rgb(196, 181, 253)', 
-                          marginLeft: '4px', 
-                          fontWeight: 'medium', 
-                          background: 'none', 
-                          border: 'none', 
-                          cursor: 'pointer',
-                          fontSize: '12px'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(221, 214, 254)'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(196, 181, 253)'}
-                      >
-                        Import custom token
-                      </button>
+                      {customTokens.length > 0 
+                        ? `${customTokens.length} custom token${customTokens.length > 1 ? 's' : ''} added`
+                        : 'Add custom tokens by contract address'
+                      }
                     </p>
                   </div>
+                  
+                  {/* Custom tokens summary */}
+                  {customTokens.length > 0 && (
+                    <div style={{ 
+                      padding: '8px 12px', 
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      border: '1px solid rgba(59, 130, 246, 0.2)',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <CheckCircle style={{ width: '12px', height: '12px', color: 'rgb(96, 165, 250)' }} />
+                        <span style={{ fontSize: '11px', color: 'rgb(147, 197, 253)' }}>
+                          Custom tokens stored locally
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '10px', color: 'rgb(107, 114, 128)' }}>
+                        Chain {customTokens[0]?.chainId}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </div>
