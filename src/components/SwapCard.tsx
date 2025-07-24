@@ -83,6 +83,13 @@ const SwapCard: React.FC = () => {
     return true;
   };
 
+  // Helper function to check if token is native
+  const isNativeToken = (token: Token) => {
+    return token.address === '0x0000000000000000000000000000000000000000' || 
+           token.symbol === 'SUPRA' || 
+           token.symbol === 'ETH';
+  };
+
   // Enhanced swap calculation with better price simulation
   const calculateSwapDetails = async (inputAmount: string) => {
     if (!inputAmount || parseFloat(inputAmount) <= 0) {
@@ -297,6 +304,18 @@ const SwapCard: React.FC = () => {
       return;
     }
     
+    // Validate amounts are finite
+    if (!isFinite(parseFloat(fromAmount)) || !isFinite(parseFloat(toAmount))) {
+      toast.error('Invalid amounts detected. Please refresh and try again.');
+      return;
+    }
+
+    // Check for minimum trade amounts
+    if (parseFloat(fromAmount) < 0.000001) {
+      toast.error(`Minimum trade amount is 0.000001 ${fromToken.symbol}`);
+      return;
+    }
+
     // Check user balance before swap
     try {
       console.log('Checking user balance before swap...');
@@ -329,6 +348,11 @@ const SwapCard: React.FC = () => {
       if (!confirmed) return;
     }
 
+    // Final safety check
+    if (!fromToken || !toToken || !account) {
+      toast.error('Missing required data for swap. Please refresh and try again.');
+      return;
+    }
     setIsLoading(true);
     try {
       // Real DEX transaction
@@ -358,20 +382,18 @@ const SwapCard: React.FC = () => {
         
         // Refresh balances after successful swap
         setTimeout(() => {
-          window.location.reload();
+          // Reset form instead of full reload
+          setFromAmount('');
+          setToAmount('');
+          setPriceImpact(null);
+          setExchangeRate(null);
+          setMinimumReceived('');
+          setLiquidityProviderFee('');
+          setRoutePath([]);
         }, 2000);
       } else {
         throw new Error('Transaction failed');
       }
-      
-      // Reset form
-      setFromAmount('');
-      setToAmount('');
-      setPriceImpact(null);
-      setExchangeRate(null);
-      setMinimumReceived('');
-      setLiquidityProviderFee('');
-      setRoutePath([]);
       
     } catch (error) {
       console.error('Swap failed:', error);
@@ -387,6 +409,10 @@ const SwapCard: React.FC = () => {
         toast.error('Insufficient liquidity for this trade');
       } else if (error.message?.includes('EXPIRED')) {
         toast.error('Transaction expired. Please try again.');
+      } else if (error.message?.includes('execution reverted')) {
+        toast.error('Transaction failed. Please check token approvals and try again.');
+      } else if (error.message?.includes('gas')) {
+        toast.error('Transaction failed due to gas issues. Please try again.');
       } else {
         toast.error(`Swap failed: ${error.message || 'Unknown error'}`);
       }
