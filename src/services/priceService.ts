@@ -71,8 +71,24 @@ class PriceService {
     const prices = new Map<string, TokenPrice>();
     const uncachedAddresses: string[] = [];
 
+    // Validate input
+    if (!addresses || addresses.length === 0) {
+      return prices;
+    }
+
+    // Filter valid addresses
+    const validAddresses = addresses.filter(addr => {
+      if (!addr || typeof addr !== 'string') return false;
+      if (addr === '0x0000000000000000000000000000000000000000') return true; // Native token
+      return ethers.utils.isAddress(addr);
+    });
+
+    if (validAddresses.length === 0) {
+      return prices;
+    }
+
     // Check cache first
-    addresses.forEach(address => {
+    validAddresses.forEach(address => {
       const cached = this.cache.get(address.toLowerCase());
       if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
         prices.set(address.toLowerCase(), cached.price);
@@ -241,22 +257,35 @@ class PriceService {
   async getUSDValue(token: Token, amount: string): Promise<number> {
     if (!amount || parseFloat(amount) <= 0) return 0;
 
+    // Validate inputs
+    if (!token || !token.address || !token.symbol) {
+      console.warn('Invalid token provided to getUSDValue');
+      return 0;
+    }
+
+    const numAmount = parseFloat(amount);
+    if (!isFinite(numAmount) || numAmount <= 0) {
+      return 0;
+    }
     try {
       const price = await this.getTokenPrice(token.address);
       if (price && price.price > 0) {
-        return parseFloat(amount) * price.price;
+        const usdValue = numAmount * price.price;
+        return isFinite(usdValue) ? usdValue : 0;
       }
 
       // Try by symbol if address fails
       const priceBySymbol = await this.getTokenPriceBySymbol(token.symbol);
       if (priceBySymbol && priceBySymbol.price > 0) {
-        return parseFloat(amount) * priceBySymbol.price;
+        const usdValue = numAmount * priceBySymbol.price;
+        return isFinite(usdValue) ? usdValue : 0;
       }
 
       // Fallback to hardcoded prices
       const fallbackPrice = this.getFallbackPriceBySymbol(token.symbol);
       if (fallbackPrice) {
-        return parseFloat(amount) * fallbackPrice.price;
+        const usdValue = numAmount * fallbackPrice.price;
+        return isFinite(usdValue) ? usdValue : 0;
       }
 
       return 0;

@@ -104,6 +104,12 @@ const ConnectWalletButton: React.FC = () => {
 
   const handleNetworkSwitch = async (targetChainId?: number) => {
     if (targetChainId) {
+      // Validate target chain ID
+      if (targetChainId !== 7 && targetChainId !== 8) {
+        toast.error('Invalid network selected');
+        return;
+      }
+      
       await switchToNetwork(targetChainId);
       setShowNetworkSelector(false);
     } else if (isWrongNetwork) {

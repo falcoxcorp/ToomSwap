@@ -171,6 +171,16 @@ export class DexService {
         throw new Error('Invalid output amount');
       }
 
+      // Validate amounts are finite
+      if (!isFinite(parseFloat(amountIn)) || !isFinite(parseFloat(amountOutMin))) {
+        throw new Error('Invalid amount values');
+      }
+
+      // Check minimum amounts
+      if (parseFloat(amountIn) < 0.000001) {
+        throw new Error(`Minimum input amount is 0.000001 ${tokenIn.symbol}`);
+      }
+
       // Verificar que los contratos no sean direcciones cero (mainnet sin configurar)
       if (this.contracts.ROUTER === "0x0000000000000000000000000000000000000000") {
         throw new Error('Router contract not configured for this network. Please use testnet or wait for mainnet deployment.');
@@ -180,16 +190,36 @@ export class DexService {
         throw new Error('Factory contract not configured for this network. Please use testnet or wait for mainnet deployment.');
       }
       
+      // Validate contract addresses
+      if (!ethers.utils.isAddress(this.contracts.ROUTER)) {
+        throw new Error('Invalid router contract address');
+      }
+
       const router = this.getRouterContract();
       const account = await this.signer.getAddress();
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
 
+      // Validate account
+      if (!account || !ethers.utils.isAddress(account)) {
+        throw new Error('Invalid account address');
+      }
+
       const amountInWei = ethers.utils.parseUnits(amountIn, tokenIn.decimals);
       const amountOutMinWei = ethers.utils.parseUnits(amountOutMin, tokenOut.decimals);
+
+      // Validate Wei amounts
+      if (amountInWei.lte(0) || amountOutMinWei.lte(0)) {
+        throw new Error('Invalid Wei amounts');
+      }
 
       // Apply slippage tolerance
       const slippageMultiplier = (100 - slippageTolerance) / 100;
       const finalAmountOutMin = amountOutMinWei.mul(Math.floor(slippageMultiplier * 100)).div(100);
+
+      // Ensure minimum output is not zero
+      if (finalAmountOutMin.lte(0)) {
+        throw new Error('Calculated minimum output is zero');
+      }
 
       console.log('💰 Swap parameters:', {
         amountInWei: amountInWei.toString(),
@@ -203,6 +233,12 @@ export class DexService {
       if (isNativeToken(tokenIn)) {
         // Swapping native SUPRA for tokens
         console.log('🔄 Executing: Native SUPRA → Token');
+        
+        // Validate WSUPRA address
+        if (!this.contracts.WSUPRA || this.contracts.WSUPRA === "0x0000000000000000000000000000000000000000") {
+          throw new Error('WSUPRA contract not configured');
+        }
+        
         tx = await router.swapExactETHForTokens(
           finalAmountOutMin,
           [this.contracts.WSUPRA, tokenOut.address],
@@ -213,6 +249,12 @@ export class DexService {
       } else if (isNativeToken(tokenOut)) {
         // Swapping tokens for native SUPRA
         console.log('🔄 Executing: Token → Native SUPRA');
+        
+        // Validate WSUPRA address
+        if (!this.contracts.WSUPRA || this.contracts.WSUPRA === "0x0000000000000000000000000000000000000000") {
+          throw new Error('WSUPRA contract not configured');
+        }
+        
         await this.checkAndApproveToken(tokenIn, amountIn);
         tx = await router.swapExactTokensForETH(
           amountInWei,
@@ -236,7 +278,25 @@ export class DexService {
         } else {
           // Route through WSUPRA
           console.log('📍 Using WSUPRA route');
+          
+          // Validate WSUPRA address
+          if (!this.contracts.WSUPRA || this.contracts.WSUPRA === "0x0000000000000000000000000000000000000000") {
+            throw new Error('WSUPRA contract not configured for routing');
+          }
+          
           path = [tokenIn.address, this.contracts.WSUPRA, tokenOut.address];
+        }
+        
+        // Validate path
+        if (path.length < 2) {
+          throw new Error('Invalid swap path');
+        }
+        
+        // Validate all addresses in path
+        for (const addr of path) {
+          if (!ethers.utils.isAddress(addr)) {
+            throw new Error(`Invalid address in swap path: ${addr}`);
+          }
         }
         
         tx = await router.swapExactTokensForTokens(
@@ -248,10 +308,25 @@ export class DexService {
         );
       }
 
+      // Validate transaction
+      if (!tx || !tx.hash) {
+        throw new Error('Invalid transaction response');
+      }
+
       console.log('✅ Swap transaction created:', tx.hash);
       return tx;
     } catch (error) {
       console.error('Error executing swap:', error);
+      
+      // Enhanced error handling
+      if (error.code === 'UNPREDICTABLE_GAS_LIMIT') {
+        throw new Error('Transaction may fail. Please check token approvals and balances.');
+      } else if (error.code === 'INSUFFICIENT_FUNDS') {
+        throw new Error('Insufficient funds for gas fees.');
+      } else if (error.reason) {
+        throw new Error(`Transaction failed: ${error.reason}`);
+      }
+      
       throw error;
     }
   }

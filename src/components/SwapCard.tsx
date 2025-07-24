@@ -95,12 +95,24 @@ const SwapCard: React.FC = () => {
       return;
     }
 
+    if (!fromToken || !toToken) {
+      console.log('Missing tokens for calculation');
+      return;
+    }
+
     setIsCalculating(true);
     
     try {
       // Try to get real data from DEX service first
       if (dexService && fromToken && toToken && chainId && isSupraNetwork(chainId)) {
         try {
+          // Verify contracts are available
+          const contracts = getContractAddresses(chainId);
+          if (contracts.ROUTER === "0x0000000000000000000000000000000000000000") {
+            console.log('Contracts not available, using fallback calculation');
+            throw new Error('Contracts not available');
+          }
+
           // Check if pair exists
           const pairExists = await dexService.pairExists(fromToken, toToken);
           
@@ -113,6 +125,11 @@ const SwapCard: React.FC = () => {
               const reserveOut = parseFloat(reserves.reserveB);
               const amountIn = parseFloat(inputAmount);
               
+              // Validate reserves
+              if (reserveIn <= 0 || reserveOut <= 0) {
+                throw new Error('Invalid reserves');
+              }
+
               // Calculate real output using constant product formula
               // amountOut = (amountIn * 997 * reserveOut) / (reserveIn * 1000 + amountIn * 997)
               const amountInWithFee = amountIn * 997;
@@ -120,6 +137,11 @@ const SwapCard: React.FC = () => {
               const denominator = reserveIn * 1000 + amountInWithFee;
               const realAmountOut = numerator / denominator;
               
+              // Validate output
+              if (realAmountOut <= 0 || !isFinite(realAmountOut)) {
+                throw new Error('Invalid output amount');
+              }
+
               // Calculate real price impact
               const priceWithoutImpact = amountIn * (reserveOut / reserveIn);
               const realPriceImpact = ((priceWithoutImpact - realAmountOut) / priceWithoutImpact) * 100;
@@ -137,7 +159,9 @@ const SwapCard: React.FC = () => {
             }
           } else {
             // Check for indirect route through WSUPRA
-            const wsupraToken = { ...fromToken, address: dexService.contracts.WSUPRA, symbol: 'WSUPRA' };
+            const wsupraAddress = contracts.WSUPRA;
+            if (wsupraAddress && wsupraAddress !== "0x0000000000000000000000000000000000000000") {
+              const wsupraToken = { ...fromToken, address: wsupraAddress, symbol: 'WSUPRA' };
             const pairAExists = await dexService.pairExists(fromToken, wsupraToken);
             const pairBExists = await dexService.pairExists(wsupraToken, toToken);
             
@@ -154,11 +178,22 @@ const SwapCard: React.FC = () => {
       
       const amount = parseFloat(inputAmount);
       
+      // Validate amount
+      if (amount <= 0 || !isFinite(amount)) {
+        throw new Error('Invalid input amount');
+      }
+
       // Get real exchange rate from DexScreener
       let rate = await priceService.getExchangeRate(fromToken, toToken);
       let directPair = true;
       let path = [fromToken.symbol, toToken.symbol];
       
+      // Validate rate
+      if (!rate || rate <= 0 || !isFinite(rate)) {
+        console.log('Invalid rate from price service, using fallback');
+        rate = 1.0;
+      }
+
       // Check if we need indirect routing
       if (rate === 1.0 && fromToken.symbol !== toToken.symbol) {
         directPair = false;
@@ -184,6 +219,11 @@ const SwapCard: React.FC = () => {
       const adjustedRate = rate * (1 - impact / 100);
       const outputAmount = amount * adjustedRate;
 
+      // Validate final calculations
+      if (outputAmount <= 0 || !isFinite(outputAmount)) {
+        throw new Error('Invalid calculation result');
+      }
+
       // Calculate minimum received with slippage
       const minReceived = outputAmount * (1 - slippage / 100);
 
@@ -202,12 +242,18 @@ const SwapCard: React.FC = () => {
       
     } catch (error) {
       console.error('Error calculating swap details:', error);
+      // Set safe fallback values
       setToAmount('');
       setPriceImpact(null);
       setExchangeRate(null);
       setMinimumReceived('');
       setLiquidityProviderFee('');
       setRoutePath([]);
+      
+      // Only show error if it's not a calculation error
+      if (error.message !== 'Invalid calculation result' && error.message !== 'Invalid reserves') {
+        toast.error('Error calculating swap details. Please try again.');
+      }
     } finally {
       setIsCalculating(false);
     }
@@ -250,6 +296,18 @@ const SwapCard: React.FC = () => {
       return;
     }
     
+    // Validate amounts are finite
+    if (!isFinite(parseFloat(fromAmount)) || !isFinite(parseFloat(toAmount))) {
+      toast.error('Invalid amounts detected. Please refresh and try again.');
+      return;
+    }
+
+    // Check for minimum trade amounts
+    if (parseFloat(fromAmount) < 0.000001) {
+      toast.error(`Minimum trade amount is 0.000001 ${fromToken.symbol}`);
+      return;
+    }
+
     // Check user balance before swap
     try {
       console.log('Checking user balance before swap...');
@@ -282,6 +340,11 @@ const SwapCard: React.FC = () => {
       if (!confirmed) return;
     }
 
+    // Final safety check
+    if (!fromToken || !toToken || !account) {
+      toast.error('Missing required data for swap. Please refresh and try again.');
+      return;
+    }
     setIsLoading(true);
     try {
       // Real DEX transaction
@@ -311,20 +374,18 @@ const SwapCard: React.FC = () => {
         
         // Refresh balances after successful swap
         setTimeout(() => {
-          window.location.reload();
+          // Reset form instead of full reload
+          setFromAmount('');
+          setToAmount('');
+          setPriceImpact(null);
+          setExchangeRate(null);
+          setMinimumReceived('');
+          setLiquidityProviderFee('');
+          setRoutePath([]);
         }, 2000);
       } else {
         throw new Error('Transaction failed');
       }
-      
-      // Reset form
-      setFromAmount('');
-      setToAmount('');
-      setPriceImpact(null);
-      setExchangeRate(null);
-      setMinimumReceived('');
-      setLiquidityProviderFee('');
-      setRoutePath([]);
       
     } catch (error) {
       console.error('Swap failed:', error);
@@ -340,6 +401,10 @@ const SwapCard: React.FC = () => {
         toast.error('Insufficient liquidity for this trade');
       } else if (error.message?.includes('EXPIRED')) {
         toast.error('Transaction expired. Please try again.');
+      } else if (error.message?.includes('execution reverted')) {
+        toast.error('Transaction failed. Please check token approvals and try again.');
+      } else if (error.message?.includes('gas')) {
+        toast.error('Transaction failed due to gas issues. Please try again.');
       } else {
         toast.error(`Swap failed: ${error.message || 'Unknown error'}`);
       }
@@ -490,6 +555,7 @@ const SwapCard: React.FC = () => {
                 ? 'bg-orange-500/10 border-orange-500/20'
                 : 'bg-yellow-500/10 border-yellow-500/20'
               }
+            }
             `}>
               <AlertTriangle className={`
                 w-4 h-4 flex-shrink-0

@@ -68,6 +68,7 @@ export const useCustomTokens = () => {
       name: string;
       symbol: string;
       decimals: number;
+      totalSupply: string;
     };
     error?: string;
   }> => {
@@ -79,6 +80,11 @@ export const useCustomTokens = () => {
       // Validate address format
       if (!ethers.utils.isAddress(address)) {
         return { isValid: false, error: 'Invalid contract address format' };
+      }
+
+      // Prevent adding native token address
+      if (address.toLowerCase() === '0x0000000000000000000000000000000000000000') {
+        return { isValid: false, error: 'Cannot add native token as custom token' };
       }
 
       // Check if contract exists
@@ -101,11 +107,18 @@ export const useCustomTokens = () => {
       );
 
       // Get token information
+      const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
+
       const [name, symbol, decimals, totalSupply] = await Promise.all([
+        Promise.all([
         tokenContract.name().catch(() => 'Unknown Token'),
         tokenContract.symbol().catch(() => 'UNKNOWN'),
         tokenContract.decimals().catch(() => 18),
-        tokenContract.totalSupply().catch(() => ethers.BigNumber.from(0))
+          tokenContract.totalSupply().catch(() => ethers.BigNumber.from(0))
+        ]),
+        timeout
       ]);
 
       // Validate token data
@@ -113,12 +126,16 @@ export const useCustomTokens = () => {
         return { isValid: false, error: 'Invalid token: no symbol found' };
       }
 
+      if (symbol.length > 20) {
+        return { isValid: false, error: 'Invalid token: symbol too long' };
+      }
+
       if (decimals < 0 || decimals > 18) {
         return { isValid: false, error: 'Invalid token: invalid decimals' };
       }
 
       if (totalSupply.eq(0)) {
-        return { isValid: false, error: 'Warning: Token has zero total supply' };
+        console.warn('Token has zero total supply');
       }
 
       return {
@@ -126,7 +143,8 @@ export const useCustomTokens = () => {
         tokenInfo: {
           name: name || 'Unknown Token',
           symbol: symbol.toUpperCase(),
-          decimals: Number(decimals)
+          decimals: Number(decimals),
+          totalSupply: totalSupply.toString()
         }
       };
 
@@ -137,6 +155,8 @@ export const useCustomTokens = () => {
         return { isValid: false, error: 'Contract is not a valid ERC20 token' };
       } else if (error.code === 'NETWORK_ERROR') {
         return { isValid: false, error: 'Network error. Please try again.' };
+      } else if (error.message === 'Request timeout') {
+        return { isValid: false, error: 'Request timeout. Please try again.' };
       } else {
         return { isValid: false, error: `Validation failed: ${error.message || 'Unknown error'}` };
       }

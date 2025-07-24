@@ -263,6 +263,18 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
       if (!confirmed) return;
     }
 
+    // Validate amounts are finite
+    if (!isFinite(parseFloat(amountA)) || !isFinite(parseFloat(amountB))) {
+      toast.error('Invalid amounts detected. Please refresh and try again.');
+      return;
+    }
+
+    // Check minimum amounts
+    if (parseFloat(amountA) < 0.000001 || parseFloat(amountB) < 0.000001) {
+      toast.error('Minimum liquidity amount is 0.000001 for each token');
+      return;
+    }
+
     setIsLoading(true);
     try {
       // Real liquidity addition
@@ -302,21 +314,16 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
           { duration: 6000 }
         );
         
-        // Refresh page after successful addition
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
+        // Reset form instead of full reload
+        setAmountA('');
+        setAmountB('');
+        setLpTokensToReceive('');
+        setPriceImpact(0);
+        setYourShare(0);
+        setPoolRatio('1:1');
       } else {
         throw new Error('Transaction failed');
       }
-      
-      // Reset form
-      setAmountA('');
-      setAmountB('');
-      setLpTokensToReceive('');
-      setPriceImpact(0);
-      setYourShare(0);
-      setPoolRatio('1:1');
       
     } catch (error) {
       console.error('Add liquidity failed:', error);
@@ -330,6 +337,10 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
         toast.error('Insufficient liquidity minted. Try adjusting amounts.');
       } else if (error.message?.includes('INSUFFICIENT_A_AMOUNT') || error.message?.includes('INSUFFICIENT_B_AMOUNT')) {
         toast.error('Insufficient token amount. Try reducing slippage tolerance.');
+      } else if (error.message?.includes('execution reverted')) {
+        toast.error('Transaction failed. Please check token approvals and try again.');
+      } else if (error.message?.includes('gas')) {
+        toast.error('Transaction failed due to gas issues. Please try again.');
       } else {
         toast.error(`Failed to add liquidity: ${error.message || 'Unknown error'}`);
       }

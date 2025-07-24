@@ -119,6 +119,11 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
       return;
     }
     
+    // Prevent invalid characters
+    if (!/^[0-9]*\.?[0-9]*$/.test(inputValue)) {
+      return;
+    }
+    
     // Validate numeric input with decimal support
     if (/^\d*\.?\d*$/.test(inputValue)) {
       // Prevent multiple decimal points
@@ -129,6 +134,17 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
         if (parts[1] && parts[1].length > selectedToken.decimals) {
           return; // Don't update if too many decimal places
         }
+        
+        // Prevent leading zeros (except for decimals)
+        if (parts[0].length > 1 && parts[0][0] === '0' && parts[0][1] !== '.') {
+          return;
+        }
+        
+        // Limit total length
+        if (inputValue.length > 20) {
+          return;
+        }
+        
         onValueChange(inputValue);
       }
     }

@@ -373,6 +373,12 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return '0.0000';
     }
 
+    // Validate inputs
+    if (!tokenAddress || !ethers.utils.isAddress(tokenAddress) && tokenAddress !== '0x0000000000000000000000000000000000000000') {
+      console.log('getTokenBalance: Invalid token address');
+      return '0.0000';
+    }
+
     try {
       console.log(`Getting balance for token ${tokenAddress} for account ${account}`);
       
@@ -381,9 +387,24 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const balance = await provider.getBalance(account);
         const formattedBalance = ethers.utils.formatEther(balance);
         console.log(`Native balance: ${formattedBalance}`);
+        
+        // Validate balance
+        if (!isFinite(parseFloat(formattedBalance))) {
+          console.warn('Invalid native balance received');
+          return '0.0000';
+        }
+        
         return formattedBalance;
       } else {
         // ERC20 token balance
+        
+        // Check if contract exists
+        const code = await provider.getCode(tokenAddress);
+        if (code === '0x') {
+          console.warn(`Token contract ${tokenAddress} does not exist`);
+          return '0.0000';
+        }
+        
         const tokenContract = new ethers.Contract(
           tokenAddress,
           [
@@ -400,8 +421,21 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
           tokenContract.symbol().catch(() => 'UNKNOWN')
         ]);
         
+        // Validate decimals
+        if (decimals < 0 || decimals > 18) {
+          console.warn(`Invalid decimals for token ${tokenAddress}: ${decimals}`);
+          return '0.0000';
+        }
+        
         const formattedBalance = ethers.utils.formatUnits(balance, decimals);
         console.log(`${symbol} balance: ${formattedBalance}`);
+        
+        // Validate balance
+        if (!isFinite(parseFloat(formattedBalance))) {
+          console.warn('Invalid token balance received');
+          return '0.0000';
+        }
+        
         return formattedBalance;
       }
     } catch (error) {

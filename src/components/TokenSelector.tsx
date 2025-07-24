@@ -4,6 +4,7 @@ import { Search, ChevronDown, X, Star, Plus, Trash2, AlertCircle, CheckCircle } 
 import { Token } from '../constants/tokens';
 import { useWeb3 } from '../context/Web3Context';
 import { useCustomTokens } from '../hooks/useCustomTokens';
+import { getContractAddresses } from '../constants/addresses';
 import toast from 'react-hot-toast';
 
 interface TokenSelectorProps {
@@ -19,6 +20,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
 }) => {
   const { getCurrentNetworkTokens } = useWeb3();
   const { customTokens, isLoading: isLoadingCustom, addCustomToken, removeCustomToken, getAllTokens } = useCustomTokens();
+  const { chainId } = useWeb3();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddToken, setShowAddToken] = useState(false);
@@ -64,6 +66,21 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
       return;
     }
 
+    // Validate network compatibility
+    if (chainId && chainId !== 8 && chainId !== 7) {
+      toast.error('Custom tokens only supported on Supra networks');
+      return;
+    }
+
+    // Check if mainnet contracts are available
+    if (chainId === 7) {
+      const contracts = getContractAddresses(chainId);
+      if (contracts.ROUTER === "0x0000000000000000000000000000000000000000") {
+        toast.error('Custom tokens not available on mainnet until contracts are deployed');
+        return;
+      }
+    }
+
     setIsAddingToken(true);
     try {
       const success = await addCustomToken(newTokenAddress.trim());
@@ -71,9 +88,11 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
         setNewTokenAddress('');
         setShowAddToken(false);
         setSearchQuery(''); // Clear search to show new token
+        toast.success('Custom token added successfully!');
       }
     } catch (error) {
       console.error('Error adding token:', error);
+      toast.error('Failed to add custom token');
     } finally {
       setIsAddingToken(false);
     }
