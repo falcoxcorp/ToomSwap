@@ -186,7 +186,7 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     
     console.warn('Could not normalize chainId, using default Supra chain');
-    return `0x${SUPRA_CHAIN.id.toString(16)}`;
+    return `0x${DEFAULT_NETWORK.id.toString(16)}`;
   };
 
   // Create StarKey adapter with enhanced EIP-1193 compliance
@@ -266,7 +266,7 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
               } else if (typeof starkeyProvider.request === 'function') {
                 return await starkeyProvider.request({ method, params });
               } else {
-                return SUPRA_CHAIN.id.toString();
+                return DEFAULT_NETWORK.id.toString();
               }
               
             case 'eth_getBalance':
@@ -358,8 +358,8 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
       isStarkey: true,
       isMetaMask: false,
       selectedAddress: null,
-      networkVersion: SUPRA_CHAIN.id.toString(),
-      chainId: `0x${SUPRA_CHAIN.id.toString(16)}`
+      networkVersion: DEFAULT_NETWORK.id.toString(),
+      chainId: `0x${DEFAULT_NETWORK.id.toString(16)}`
     };
     
     console.log('Enhanced StarKey adapter created:', adapter);
@@ -509,7 +509,7 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         // Check network
         if (network.chainId !== SUPRA_CHAIN.id) {
-          console.log('Wrong network detected, current:', network.chainId, 'expected:', SUPRA_CHAIN.id);
+          console.log('Wrong network detected, current:', network.chainId, 'expected:', DEFAULT_NETWORK.id);
           toast.success('Connected to StarKey! Please switch to Supra network.');
         } else {
           toast.success('Successfully connected to StarKey wallet on Supra network!');
