@@ -255,7 +255,7 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
               } else if (typeof starkeyProvider.request === 'function') {
                 return await starkeyProvider.request({ method, params });
               } else {
-                return `0x${SUPRA_CHAIN.id.toString(16)}`;
+                return `0x${DEFAULT_NETWORK.id.toString(16)}`;
               }
               
             case 'net_version':
@@ -508,11 +508,12 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
 
         // Check network
-        if (network.chainId !== SUPRA_CHAIN.id) {
-          console.log('Wrong network detected, current:', network.chainId, 'expected:', DEFAULT_NETWORK.id);
-          toast.success('Connected to StarKey! Please switch to Supra network.');
+        if (!isSupraNetwork(network.chainId)) {
+          console.log('Wrong network detected, current:', network.chainId, 'supported:', Object.keys(SUPPORTED_NETWORKS));
+          toast.success('Connected to StarKey! Please switch to a Supra network.');
         } else {
-          toast.success('Successfully connected to StarKey wallet on Supra network!');
+          const networkName = getNetworkDisplayName(network.chainId);
+          toast.success(`Successfully connected to StarKey wallet on ${networkName}!`);
         }
       } catch (providerError: any) {
         console.error('Provider setup failed:', providerError);
@@ -615,6 +616,7 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const getCurrentNetworkTokens = () => {
     return getTokensForNetwork(chainId || DEFAULT_NETWORK.id);
   };
+
   // Disconnect wallet
   const disconnectWallet = async () => {
     console.log('Disconnecting wallet...');
