@@ -195,6 +195,15 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
                 MAX
               </motion.button>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Input row */}
+      <div className="flex items-center gap-3 mb-2">
+        <input
+          type="text"
+          value={value}
           onChange={handleInputChange}
           placeholder="0.0"
           readOnly={readOnly}
