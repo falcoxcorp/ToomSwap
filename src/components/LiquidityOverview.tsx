@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, ExternalLink, Info, Droplets, Minus, TrendingUp, AlertCircle, Zap } from 'lucide-react';
 import { useWeb3 } from '../context/Web3Context';
+import { priceService } from '../services/priceService';
 import RemoveLiquidityModal from './RemoveLiquidityModal';
 
 interface LiquidityOverviewProps {
@@ -31,6 +32,7 @@ const LiquidityOverview: React.FC<LiquidityOverviewProps> = ({
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState<LiquidityPosition | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [realTimePrices, setRealTimePrices] = useState<Map<string, number>>(new Map());
 
   // Mock liquidity positions with enhanced data
   const liquidityPositions: LiquidityPosition[] = account ? [
@@ -95,6 +97,39 @@ const LiquidityOverview: React.FC<LiquidityOverviewProps> = ({
     }
   }, [account]);
 
+  // Fetch real-time prices for portfolio summary
+  useEffect(() => {
+    const fetchRealTimePrices = async () => {
+      if (liquidityPositions.length === 0) return;
+
+      try {
+        const symbols = Array.from(new Set(
+          liquidityPositions.flatMap(pos => [pos.tokenA, pos.tokenB])
+        ));
+        
+        const pricePromises = symbols.map(async (symbol) => {
+          const price = await priceService.getTokenPriceBySymbol(symbol);
+          return { symbol, price: price?.price || 0 };
+        });
+        
+        const prices = await Promise.all(pricePromises);
+        const priceMap = new Map<string, number>();
+        prices.forEach(({ symbol, price }) => {
+          priceMap.set(symbol, price);
+        });
+        
+        setRealTimePrices(priceMap);
+      } catch (error) {
+        console.error('Error fetching real-time prices:', error);
+      }
+    };
+
+    fetchRealTimePrices();
+    // Refresh prices every 30 seconds
+    const interval = setInterval(fetchRealTimePrices, 30000);
+    return () => clearInterval(interval);
+  }, [liquidityPositions]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -151,6 +186,11 @@ const LiquidityOverview: React.FC<LiquidityOverviewProps> = ({
               <div className="text-xs sm:text-sm text-gray-400 mb-1">Total Value</div>
               <div className="text-lg sm:text-xl font-bold text-white">
                 ${totalValue.toLocaleString()}
+                {realTimePrices.size > 0 && (
+                  <span className="text-xs text-green-400 ml-1">
+                    (Live)
+                  </span>
+                )}
               </div>
             </div>
             <div>

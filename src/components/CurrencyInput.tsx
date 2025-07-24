@@ -4,6 +4,7 @@ import TokenSelector from './TokenSelector';
 import { Token, formatTokenAmount } from '../constants/tokens';
 import { useWeb3 } from '../context/Web3Context';
 import { DexService } from '../services/dexService';
+import { priceService } from '../services/priceService';
 
 interface CurrencyInputProps {
   label: string;
@@ -33,6 +34,8 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
   const { account, getTokenBalance } = useWeb3();
   const [tokenBalance, setTokenBalance] = useState<string>('0.0000');
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [usdValue, setUsdValue] = useState<number | null>(null);
+  const [isLoadingPrice, setIsLoadingPrice] = useState(false);
   const { provider, signer, chainId } = useWeb3();
 
   // Fetch token balance
@@ -65,6 +68,30 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
 
     fetchBalance();
   }, [account, selectedToken, getTokenBalance, provider, signer, chainId]);
+
+  // Fetch USD value when value or token changes
+  useEffect(() => {
+    const fetchUSDValue = async () => {
+      if (!value || parseFloat(value) <= 0) {
+        setUsdValue(null);
+        return;
+      }
+
+      setIsLoadingPrice(true);
+      try {
+        const usdVal = await priceService.getUSDValue(selectedToken, value);
+        setUsdValue(usdVal);
+      } catch (error) {
+        console.error('Error fetching USD value:', error);
+        setUsdValue(null);
+      } finally {
+        setIsLoadingPrice(false);
+      }
+    };
+
+    const timeoutId = setTimeout(fetchUSDValue, 500); // Debounce
+    return () => clearTimeout(timeoutId);
+  }, [value, selectedToken]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
@@ -107,27 +134,6 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
   const displayBalance = balance || tokenBalance;
   const formattedBalance = formatTokenAmount(displayBalance, selectedToken.decimals);
 
-  const getUSDValue = () => {
-    if (!value || parseFloat(value) <= 0) return null;
-    
-    // Mock USD prices (in real app, fetch from price API)
-    const mockPrices: { [key: string]: number } = {
-      'SUPRA': 0.85,
-      'WSUPRA': 0.85,
-      'USDT': 1.00,
-      'USDC': 1.00,
-      'DAI': 1.00,
-      'TOON': 0.12,
-      'WETH': 2500.00
-    };
-    
-    const price = mockPrices[selectedToken.symbol] || 1.0;
-    const usdValue = parseFloat(value) * price;
-    
-    return usdValue;
-  };
-
-  const usdValue = getUSDValue();
   const hasInsufficientBalance = value && parseFloat(value) > parseFloat(displayBalance) && !readOnly;
 
   return (
@@ -213,11 +219,15 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
         >
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-400">USD Value</span>
-            <span className="text-gray-300 font-semibold">
-              ≈ ${usdValue < 0.01 ? '< $0.01' : usdValue.toLocaleString(undefined, { 
-                minimumFractionDigits: 2, 
-                maximumFractionDigits: 2 
-              })}
+            <span className="text-gray-300 font-semibold flex items-center gap-1">
+              {isLoadingPrice ? (
+                <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>≈ ${usdValue < 0.01 ? '< $0.01' : usdValue.toLocaleString(undefined, { 
+                  minimumFractionDigits: 2, 
+                  maximumFractionDigits: 2 
+                })}</>
+              )}
             </span>
           </div>
         </motion.div>

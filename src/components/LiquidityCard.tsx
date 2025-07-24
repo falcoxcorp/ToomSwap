@@ -5,6 +5,7 @@ import CurrencyInput from './CurrencyInput';
 import { Token, NATIVE_TOKEN, USDT_TOKEN } from '../constants/tokens';
 import { useWeb3 } from '../context/Web3Context';
 import { DexService } from '../services/dexService';
+import { priceService } from '../services/priceService';
 import toast from 'react-hot-toast';
 
 interface LiquidityCardProps {
@@ -25,6 +26,7 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
   const [priceImpact, setPriceImpact] = useState<number>(0);
   const [isCalculating, setIsCalculating] = useState(false);
   const [dexService, setDexService] = useState<DexService | null>(null);
+  const [totalUSDValue, setTotalUSDValue] = useState<number>(0);
 
   // Initialize DexService when provider/signer changes
   useEffect(() => {
@@ -88,6 +90,7 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
       setYourShare(0);
       setPoolRatio('1:1');
       setPoolExists(true);
+      setTotalUSDValue(0);
       return;
     }
 
@@ -151,24 +154,27 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
       const amtA = parseFloat(amountA);
       const amtB = parseFloat(amountB);
 
+      // Get real USD values for both tokens
+      const [usdValueA, usdValueB] = await Promise.all([
+        priceService.getUSDValue(tokenA, amountA),
+        priceService.getUSDValue(tokenB, amountB)
+      ]);
+      
+      const totalUSD = usdValueA + usdValueB;
+      setTotalUSDValue(totalUSD);
+
       // Enhanced pool simulation based on token pairs
       let mockTotalLiquidity = 1000000;
       let baseRatio = 1.0;
 
-      // Realistic ratios based on token pairs
-      if (tokenA.symbol === 'SUPRA' && tokenB.symbol === 'USDT') {
-        baseRatio = 0.85; // 1 SUPRA = 0.85 USDT
-        mockTotalLiquidity = 2500000;
-      } else if (tokenA.symbol === 'USDT' && tokenB.symbol === 'SUPRA') {
-        baseRatio = 1.18; // 1 USDT = 1.18 SUPRA
-        mockTotalLiquidity = 2500000;
-      } else if (tokenA.symbol === 'WSUPRA') {
-        baseRatio = tokenB.symbol === 'SUPRA' ? 1.0 : 0.85;
-        mockTotalLiquidity = 1800000;
-      } else if (tokenA.symbol === 'TOON') {
-        baseRatio = 0.12; // TOON price in USD
-        mockTotalLiquidity = 500000;
-      }
+      // Get real exchange rate
+      baseRatio = await priceService.getExchangeRate(tokenA, tokenB);
+      
+      // Estimate liquidity based on USD value
+      if (totalUSD > 100000) mockTotalLiquidity = 5000000;
+      else if (totalUSD > 50000) mockTotalLiquidity = 2500000;
+      else if (totalUSD > 10000) mockTotalLiquidity = 1000000;
+      else mockTotalLiquidity = 500000;
 
       // Calculate LP tokens using constant product formula
       const lpTokens = Math.sqrt(amtA * amtB * baseRatio);
@@ -498,6 +504,17 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
                 <span className="text-gray-400">LP Tokens to Receive</span>
                 <span className="text-white font-medium">{lpTokensToReceive}</span>
               </div>
+              {totalUSDValue > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Total USD Value</span>
+                  <span className="text-white font-medium">
+                    ${totalUSDValue.toLocaleString(undefined, { 
+                      minimumFractionDigits: 2, 
+                      maximumFractionDigits: 2 
+                    })}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-gray-400">{tokenA.symbol} per {tokenB.symbol}</span>
                 <span className="text-white font-medium">

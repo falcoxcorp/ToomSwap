@@ -7,6 +7,7 @@ import { Token, getTokenByAddress, getNativeToken, getUSDTToken } from '../const
 import { useWeb3 } from '../context/Web3Context';
 import { isSupraNetwork } from '../constants/addresses';
 import { DexService } from '../services/dexService';
+import { priceService } from '../services/priceService';
 import toast from 'react-hot-toast';
 
 const SwapCard: React.FC = () => {
@@ -25,6 +26,7 @@ const SwapCard: React.FC = () => {
   const [routePath, setRoutePath] = useState<string[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
   const [dexService, setDexService] = useState<DexService | null>(null);
+  const [realTimePrice, setRealTimePrice] = useState<number | null>(null);
 
   // Initialize DexService when provider/signer changes
   useEffect(() => {
@@ -152,49 +154,19 @@ const SwapCard: React.FC = () => {
       
       const amount = parseFloat(inputAmount);
       
-      // Enhanced mock exchange rate calculation
-      let rate = 1.0;
+      // Get real exchange rate from DexScreener
+      let rate = await priceService.getExchangeRate(fromToken, toToken);
       let directPair = true;
       let path = [fromToken.symbol, toToken.symbol];
       
-      // Direct pairs
-      if (fromToken.symbol === 'SUPRA' && toToken.symbol === 'USDT') {
-        rate = 0.85;
-      } else if (fromToken.symbol === 'USDT' && toToken.symbol === 'SUPRA') {
-        rate = 1.18;
-      } else if (fromToken.symbol === 'SUPRA' && toToken.symbol === 'USDC') {
-        rate = 0.84;
-      } else if (fromToken.symbol === 'USDC' && toToken.symbol === 'SUPRA') {
-        rate = 1.19;
-      } else if (fromToken.symbol === 'WSUPRA' && toToken.symbol === 'SUPRA') {
-        rate = 1.0;
-      } else if (fromToken.symbol === 'SUPRA' && toToken.symbol === 'WSUPRA') {
-        rate = 1.0;
-      } else if (fromToken.symbol === 'USDT' && toToken.symbol === 'USDC') {
-        rate = 0.999;
-      } else if (fromToken.symbol === 'USDC' && toToken.symbol === 'USDT') {
-        rate = 1.001;
-      } else {
-        // Indirect pairs through SUPRA
+      // Check if we need indirect routing
+      if (rate === 1.0 && fromToken.symbol !== toToken.symbol) {
         directPair = false;
         path = [fromToken.symbol, 'SUPRA', toToken.symbol];
-        
-        // Calculate rate through SUPRA
-        let toSupraRate = 1.0;
-        let fromSupraRate = 1.0;
-        
-        // From token to SUPRA
-        if (fromToken.symbol === 'USDT') toSupraRate = 1.18;
-        else if (fromToken.symbol === 'USDC') toSupraRate = 1.19;
-        else if (fromToken.symbol === 'TOON') toSupraRate = 7.08; // 0.12 USD / 0.85 USD
-        
-        // SUPRA to target token
-        if (toToken.symbol === 'USDT') fromSupraRate = 0.85;
-        else if (toToken.symbol === 'USDC') fromSupraRate = 0.84;
-        else if (toToken.symbol === 'TOON') fromSupraRate = 7.08;
-        
-        rate = toSupraRate * fromSupraRate;
       }
+      
+      // Store real-time price for display
+      setRealTimePrice(rate);
 
       // Calculate price impact based on trade size and liquidity
       let impact = 0;
@@ -225,6 +197,8 @@ const SwapCard: React.FC = () => {
       setMinimumReceived(minReceived.toFixed(6));
       setLiquidityProviderFee(lpFee.toFixed(6));
       setRoutePath(path);
+      
+      console.log(`Real-time rate ${fromToken.symbol}/${toToken.symbol}:`, rate);
       
     } catch (error) {
       console.error('Error calculating swap details:', error);
@@ -519,6 +493,11 @@ const SwapCard: React.FC = () => {
                 <span className="text-gray-400">Exchange Rate</span>
                 <span className="text-white font-medium">
                   1 {fromToken.symbol} = {exchangeRate?.toFixed(6)} {toToken.symbol}
+                  {realTimePrice && (
+                    <span className="text-xs text-green-400 ml-1">
+                      (Live)
+                    </span>
+                  )}
                 </span>
               </div>
               
