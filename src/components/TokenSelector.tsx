@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ChevronDown, X, Star } from 'lucide-react';
-import { Token, DEFAULT_TOKENS } from '../constants/tokens';
+import { Token } from '../constants/tokens';
+import { useWeb3 } from '../context/Web3Context';
 
 interface TokenSelectorProps {
   selectedToken: Token;
@@ -14,12 +15,14 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
   onSelectToken, 
   otherToken 
 }) => {
+  const { getCurrentNetworkTokens } = useWeb3();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  const filteredTokens = DEFAULT_TOKENS.filter(token => 
+  const availableTokens = getCurrentNetworkTokens();
+  const filteredTokens = availableTokens.filter(token => 
     token.address !== otherToken?.address &&
     (token.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
      token.symbol.toLowerCase().includes(searchQuery.toLowerCase()))

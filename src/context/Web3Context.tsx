@@ -1,6 +1,16 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { ethers } from 'ethers';
-import { SUPRA_CHAIN, SUPRA_NETWORK_CONFIG } from '../constants/addresses';
+import { 
+  SUPRA_MAINNET, 
+  SUPRA_TESTNET, 
+  SUPPORTED_NETWORKS, 
+  DEFAULT_NETWORK,
+  getNetworkConfig,
+  getNetworkConfigForWallet,
+  isSupraNetwork,
+  getNetworkDisplayName
+} from '../constants/addresses';
+import { getTokensForNetwork } from '../constants/tokens';
 import toast from 'react-hot-toast';
 
 type WalletType = 'starkey' | null;
@@ -15,6 +25,9 @@ interface Web3ContextType {
   balance: string;
   connectWallet: (walletType?: WalletType) => Promise<void>;
   disconnectWallet: () => void;
+  switchToNetwork: (chainId: number) => Promise<void>;
+  getSupportedNetworks: () => typeof SUPPORTED_NETWORKS;
+  getCurrentNetworkTokens: () => any[];
   switchToSupraNetwork: () => Promise<void>;
   getTokenBalance: (tokenAddress: string) => Promise<string>;
 }
@@ -530,57 +543,78 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Switch to Supra network
-  const switchToSupraNetwork = async () => {
+  const switchToNetwork = async (targetChainId: number) => {
     const currentProvider = getStarkeyProvider();
     if (!currentProvider || pendingNetworkRequest) return;
 
+    const networkConfig = getNetworkConfig(targetChainId);
+    if (!networkConfig) {
+      toast.error('Unsupported network');
+      return;
+    }
+
     setPendingNetworkRequest(true);
     try {
-      console.log('Switching to Supra network...');
+      console.log(`Switching to ${networkConfig.name}...`);
       
       const adapter = createStarkeyAdapter(currentProvider);
       
       await adapter.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: `0x${SUPRA_CHAIN.id.toString(16)}` }]
+        params: [{ chainId: `0x${targetChainId.toString(16)}` }]
       });
       
-      toast.success('Successfully switched to Supra network!');
+      toast.success(`Successfully switched to ${networkConfig.name}!`);
     } catch (switchError: any) {
       console.log('Switch network error:', switchError);
       
       if (switchError.code === 4902) {
         try {
-          console.log('Adding Supra network...');
+          console.log(`Adding ${networkConfig.name}...`);
           
           const adapter = createStarkeyAdapter(currentProvider);
+          const walletConfig = getNetworkConfigForWallet(targetChainId);
           
           await adapter.request({
             method: 'wallet_addEthereumChain',
-            params: [SUPRA_NETWORK_CONFIG]
+            params: [walletConfig]
           });
           
-          toast.success('Supra network added and switched successfully!');
+          toast.success(`${networkConfig.name} added and switched successfully!`);
         } catch (addError: any) {
-          console.error('Failed to add Supra network:', addError);
+          console.error(`Failed to add ${networkConfig.name}:`, addError);
           
           if (addError.code === 4001) {
-            toast.error('Please approve the request to add Supra network in StarKey');
+            toast.error(`Please approve the request to add ${networkConfig.name} in StarKey`);
           } else {
-            toast.error('Failed to add Supra network to StarKey');
+            toast.error(`Failed to add ${networkConfig.name} to StarKey`);
           }
         }
       } else if (switchError.code === 4001) {
         toast.error('Please approve the network switch in StarKey');
       } else {
-        console.error('Failed to switch to Supra network:', switchError);
-        toast.error('Failed to switch to Supra network');
+        console.error(`Failed to switch to ${networkConfig.name}:`, switchError);
+        toast.error(`Failed to switch to ${networkConfig.name}`);
       }
     } finally {
       setPendingNetworkRequest(false);
     }
   };
 
+  // Legacy function for backward compatibility
+  const switchToSupraNetwork = async () => {
+    await switchToNetwork(DEFAULT_NETWORK.id);
+  };
+
+  // Get supported networks
+  const getSupportedNetworks = () => {
+    return SUPPORTED_NETWORKS;
+  };
+
+  // Get current network tokens
+  const getCurrentNetworkTokens = () => {
+    return getTokensForNetwork(chainId || DEFAULT_NETWORK.id);
+  };
   // Disconnect wallet
   const disconnectWallet = async () => {
     console.log('Disconnecting wallet...');
@@ -629,10 +663,12 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const newChainId = parseInt(normalizedChainId, 16);
       setChainId(newChainId);
       
-      if (newChainId === SUPRA_CHAIN.id) {
-        toast.success('Switched to Supra network!');
+      const networkConfig = getNetworkConfig(newChainId);
+      
+      if (isSupraNetwork(newChainId)) {
+        toast.success(`Switched to ${networkConfig.name}!`);
       } else {
-        toast.warning('Please switch to Supra network for full functionality');
+        toast.warning('Please switch to a supported Supra network for full functionality');
       }
     };
 
@@ -746,6 +782,9 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
       balance,
       connectWallet,
       disconnectWallet,
+      switchToNetwork,
+      getSupportedNetworks,
+      getCurrentNetworkTokens,
       switchToSupraNetwork,
       getTokenBalance
     }}>

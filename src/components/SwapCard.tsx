@@ -3,14 +3,15 @@ import { motion } from 'framer-motion';
 import { ArrowUpDown, Settings, Info, AlertTriangle, TrendingUp, Zap } from 'lucide-react';
 import CurrencyInput from './CurrencyInput';
 import SettingsModal from './SettingsModal';
-import { Token, NATIVE_TOKEN, USDT_TOKEN, getTokenByAddress } from '../constants/tokens';
+import { Token, getTokenByAddress, getNativeToken, getUSDTToken } from '../constants/tokens';
 import { useWeb3 } from '../context/Web3Context';
+import { isSupraNetwork } from '../constants/addresses';
 import toast from 'react-hot-toast';
 
 const SwapCard: React.FC = () => {
-  const { account, signer, chainId, provider } = useWeb3();
-  const [fromToken, setFromToken] = useState<Token>(NATIVE_TOKEN);
-  const [toToken, setToToken] = useState<Token>(USDT_TOKEN);
+  const { account, signer, chainId, provider, getCurrentNetworkTokens } = useWeb3();
+  const [fromToken, setFromToken] = useState<Token | null>(null);
+  const [toToken, setToToken] = useState<Token | null>(null);
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -23,10 +24,35 @@ const SwapCard: React.FC = () => {
   const [routePath, setRoutePath] = useState<string[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
 
+  // Initialize tokens when chainId changes
+  useEffect(() => {
+    if (chainId && isSupraNetwork(chainId)) {
+      const nativeToken = getNativeToken(chainId);
+      const usdtToken = getUSDTToken(chainId);
+      
+      if (!fromToken || fromToken.chainId !== chainId) {
+        setFromToken(nativeToken);
+      }
+      if (!toToken || toToken.chainId !== chainId) {
+        setToToken(usdtToken);
+      }
+    }
+  }, [chainId]);
+
   // Validate swap parameters
   const validateSwap = () => {
     if (!account) {
       toast.error('Please connect your wallet');
+      return false;
+    }
+
+    if (!chainId || !isSupraNetwork(chainId)) {
+      toast.error('Please switch to a supported Supra network');
+      return false;
+    }
+
+    if (!fromToken || !toToken) {
+      toast.error('Please select tokens to swap');
       return false;
     }
 
@@ -37,11 +63,6 @@ const SwapCard: React.FC = () => {
 
     if (fromToken.address === toToken.address) {
       toast.error('Cannot swap the same token');
-      return false;
-    }
-
-    if (chainId !== 8) {
-      toast.error('Please switch to Supra network');
       return false;
     }
 
@@ -207,6 +228,8 @@ const SwapCard: React.FC = () => {
 
   // Update calculations when amount changes
   useEffect(() => {
+    if (!fromToken || !toToken) return;
+    
     const timeoutId = setTimeout(() => {
       calculateSwapDetails(fromAmount);
     }, 300);
@@ -214,7 +237,32 @@ const SwapCard: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [fromAmount, fromToken, toToken, slippage]);
 
-  const isSwapDisabled = !account || !fromAmount || parseFloat(fromAmount) <= 0 || isLoading || isCalculating;
+  const isSwapDisabled = !account || !fromToken || !toToken || !fromAmount || 
+    parseFloat(fromAmount) <= 0 || isLoading || isCalculating || !isSupraNetwork(chainId || 0);
+
+  // Show loading state while tokens are being initialized
+  if (!fromToken || !toToken) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="
+          w-full max-w-sm sm:max-w-md mx-auto p-4 sm:p-6 rounded-3xl
+          bg-gradient-to-br from-gray-900/90 to-gray-800/90
+          backdrop-blur-xl border border-white/10 shadow-2xl
+          flex items-center justify-center min-h-[400px]
+        "
+      >
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4" />
+          <div className="text-white font-medium">Loading tokens...</div>
+          <div className="text-gray-400 text-sm mt-1">
+            {!chainId ? 'Connect wallet' : !isSupraNetwork(chainId) ? 'Switch to Supra network' : 'Initializing...'}
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -404,6 +452,8 @@ const SwapCard: React.FC = () => {
         </motion.div>
       )}
 
+              : !isSupraNetwork(chainId || 0)
+              ? 'Switch to Supra Network'
       {/* Swap Button */}
       <motion.button
         whileHover={{ scale: 1.02 }}

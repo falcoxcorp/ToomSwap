@@ -7,53 +7,118 @@ export interface Token {
   logoURI: string;
 }
 
-// Native SUPRA token
-export const NATIVE_TOKEN: Token = {
-  name: "Supra",
-  symbol: "SUPRA",
-  address: "0x0000000000000000000000000000000000000000",
-  chainId: 8,
-  decimals: 18,
-  logoURI: "https://photos.pinksale.finance/file/pinksale-logo-upload/1751321928620-ab24aa4fccb165dc3ea539fa6f40d2c9.png"
+// Multi-network token configurations
+export const TOKENS_BY_NETWORK = {
+  // Supra Mainnet (Chain ID: 7)
+  7: {
+    NATIVE: {
+      name: "Supra",
+      symbol: "SUPRA",
+      address: "0x0000000000000000000000000000000000000000",
+      chainId: 7,
+      decimals: 18,
+      logoURI: "https://photos.pinksale.finance/file/pinksale-logo-upload/1751321928620-ab24aa4fccb165dc3ea539fa6f40d2c9.png"
+    },
+    WSUPRA: {
+      name: "Wrapped Supra",
+      symbol: "WSUPRA",
+      address: "0xb4b7b25d5b05eee26ca81a616dfc68e069622129", // Update with mainnet address
+      chainId: 7,
+      decimals: 18,
+      logoURI: "https://photos.pinksale.finance/file/pinksale-logo-upload/1751321928620-ab24aa4fccb165dc3ea539fa6f40d2c9.png"
+    },
+    USDT: {
+      name: "Tether USD",
+      symbol: "USDT",
+      address: "0x900101d06a7426441ae63e9ab3b9b0f63be145f1", // Update with mainnet address
+      chainId: 7,
+      decimals: 6,
+      logoURI: "https://pipiswap.finance/images/tokens/0x900101d06a7426441ae63e9ab3b9b0f63be145f1.png"
+    },
+    TOON: {
+      name: "ToonSwap Token",
+      symbol: "TOON",
+      address: "0x1234567890123456789012345678901234567890", // Update with mainnet address
+      chainId: 7,
+      decimals: 18,
+      logoURI: "https://photos.pinksale.finance/file/pinksale-logo-upload/1751326180150-96821ac49491ed824047c2ffa1217f78.png"
+    }
+  },
+  // Supra Testnet (Chain ID: 8)
+  8: {
+    NATIVE: {
+      name: "Supra",
+      symbol: "SUPRA",
+      address: "0x0000000000000000000000000000000000000000",
+      chainId: 8,
+      decimals: 18,
+      logoURI: "https://photos.pinksale.finance/file/pinksale-logo-upload/1751321928620-ab24aa4fccb165dc3ea539fa6f40d2c9.png"
+    },
+    WSUPRA: {
+      name: "Wrapped Supra",
+      symbol: "WSUPRA",
+      address: "0xb4b7b25d5b05eee26ca81a616dfc68e069622129",
+      chainId: 8,
+      decimals: 18,
+      logoURI: "https://photos.pinksale.finance/file/pinksale-logo-upload/1751321928620-ab24aa4fccb165dc3ea539fa6f40d2c9.png"
+    },
+    USDT: {
+      name: "Tether USD",
+      symbol: "USDT",
+      address: "0x900101d06a7426441ae63e9ab3b9b0f63be145f1",
+      chainId: 8,
+      decimals: 6,
+      logoURI: "https://pipiswap.finance/images/tokens/0x900101d06a7426441ae63e9ab3b9b0f63be145f1.png"
+    },
+    TOON: {
+      name: "ToonSwap Token",
+      symbol: "TOON",
+      address: "0x1234567890123456789012345678901234567890",
+      chainId: 8,
+      decimals: 18,
+      logoURI: "https://photos.pinksale.finance/file/pinksale-logo-upload/1751326180150-96821ac49491ed824047c2ffa1217f78.png"
+    }
+  }
 };
 
-// Wrapped SUPRA token
-export const WSUPRA_TOKEN: Token = {
-  name: "Wrapped Supra",
-  symbol: "WSUPRA",
-  address: "0xb4b7b25d5b05eee26ca81a616dfc68e069622129",
-  chainId: 8,
-  decimals: 18,
-  logoURI: "https://photos.pinksale.finance/file/pinksale-logo-upload/1751321928620-ab24aa4fccb165dc3ea539fa6f40d2c9.png"
+// Helper functions to get tokens for current network
+export const getTokensForNetwork = (chainId: number): Token[] => {
+  const networkTokens = TOKENS_BY_NETWORK[chainId as keyof typeof TOKENS_BY_NETWORK];
+  if (!networkTokens) {
+    // Fallback to testnet tokens
+    return Object.values(TOKENS_BY_NETWORK[8]);
+  }
+  return Object.values(networkTokens);
 };
 
-// USDT token on Supra testnet
-export const USDT_TOKEN: Token = {
-  name: "Tether USD",
-  symbol: "USDT",
-  address: "0x900101d06a7426441ae63e9ab3b9b0f63be145f1",
-  chainId: 8,
-  decimals: 6,
-  logoURI: "https://pipiswap.finance/images/tokens/0x900101d06a7426441ae63e9ab3b9b0f63be145f1.png"
+export const getNativeToken = (chainId: number): Token => {
+  const networkTokens = TOKENS_BY_NETWORK[chainId as keyof typeof TOKENS_BY_NETWORK];
+  return networkTokens?.NATIVE || TOKENS_BY_NETWORK[8].NATIVE;
 };
 
-// ToonSwap native token
-export const TOON_TOKEN: Token = {
-  name: "ToonSwap Token",
-  symbol: "TOON",
-  address: "0x1234567890123456789012345678901234567890",
-  chainId: 8,
-  decimals: 18,
-  logoURI: "https://photos.pinksale.finance/file/pinksale-logo-upload/1751326180150-96821ac49491ed824047c2ffa1217f78.png"
+export const getWrappedToken = (chainId: number): Token => {
+  const networkTokens = TOKENS_BY_NETWORK[chainId as keyof typeof TOKENS_BY_NETWORK];
+  return networkTokens?.WSUPRA || TOKENS_BY_NETWORK[8].WSUPRA;
 };
 
-// Only the 4 tokens requested: SUPRA, WSUPRA, USDT, TOON
-export const DEFAULT_TOKENS: Token[] = [
-  NATIVE_TOKEN,    // SUPRA
-  WSUPRA_TOKEN,    // WSUPRA
-  USDT_TOKEN,      // USDT
-  TOON_TOKEN       // TOON
-];
+export const getUSDTToken = (chainId: number): Token => {
+  const networkTokens = TOKENS_BY_NETWORK[chainId as keyof typeof TOKENS_BY_NETWORK];
+  return networkTokens?.USDT || TOKENS_BY_NETWORK[8].USDT;
+};
+
+export const getToonToken = (chainId: number): Token => {
+  const networkTokens = TOKENS_BY_NETWORK[chainId as keyof typeof TOKENS_BY_NETWORK];
+  return networkTokens?.TOON || TOKENS_BY_NETWORK[8].TOON;
+};
+
+// Legacy exports for backward compatibility (default to testnet)
+export const NATIVE_TOKEN: Token = TOKENS_BY_NETWORK[8].NATIVE;
+export const WSUPRA_TOKEN: Token = TOKENS_BY_NETWORK[8].WSUPRA;
+export const USDT_TOKEN: Token = TOKENS_BY_NETWORK[8].USDT;
+export const TOON_TOKEN: Token = TOKENS_BY_NETWORK[8].TOON;
+
+// Dynamic token list based on current network
+export const DEFAULT_TOKENS: Token[] = getTokensForNetwork(8); // Default to testnet
 
 // Token lists by category
 export const STABLECOINS: Token[] = [
