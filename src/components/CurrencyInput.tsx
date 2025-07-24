@@ -204,17 +204,11 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
         <input
           type="text"
           value={value}
-            <span className={`font-semibold ml-1 ${
-              isLoadingBalance 
-                ? 'animate-pulse text-gray-300' 
-                : parseFloat(displayBalance) > 0 
-                ? 'text-white' 
-                : 'text-red-400'
-            }`}>
+          onChange={handleInputChange}
           placeholder="0.0"
           readOnly={readOnly}
           className={`
-          {!readOnly && showMaxButton && parseFloat(displayBalance) > 0 && !isLoadingBalance && (
+            flex-1 bg-transparent text-lg sm:text-xl lg:text-2xl font-bold text-white
             placeholder-gray-500 focus:outline-none min-w-0
             transition-all duration-200
             ${readOnly ? 'cursor-default' : 'cursor-text'}
@@ -230,6 +224,12 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
             onSelectToken={onTokenChange}
             otherToken={otherToken}
           />
+        </div>
+      </div>
+
+      {/* Balance status */}
+      <div className="mt-2 flex justify-between items-center">
+        <div className="flex items-center gap-2">
           {!readOnly && parseFloat(displayBalance) === 0 && !isLoadingBalance && (
             <span className="text-xs text-red-400 font-medium">
               No balance
