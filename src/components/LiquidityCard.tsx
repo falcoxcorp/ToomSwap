@@ -4,6 +4,7 @@ import { Plus, ArrowLeft, Info, AlertTriangle, Droplets, Zap } from 'lucide-reac
 import CurrencyInput from './CurrencyInput';
 import { Token, NATIVE_TOKEN, USDT_TOKEN } from '../constants/tokens';
 import { useWeb3 } from '../context/Web3Context';
+import { DexService } from '../services/dexService';
 import toast from 'react-hot-toast';
 
 interface LiquidityCardProps {
@@ -23,6 +24,17 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
   const [lpTokensToReceive, setLpTokensToReceive] = useState<string>('');
   const [priceImpact, setPriceImpact] = useState<number>(0);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [dexService, setDexService] = useState<DexService | null>(null);
+
+  // Initialize DexService when provider/signer changes
+  useEffect(() => {
+    if (provider && signer && chainId) {
+      const service = new DexService(provider, signer, chainId);
+      setDexService(service);
+    } else {
+      setDexService(null);
+    }
+  }, [provider, signer, chainId]);
 
   // Enhanced validation for liquidity addition
   const validateLiquidity = () => {
@@ -75,12 +87,52 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
       setPriceImpact(0);
       setYourShare(0);
       setPoolRatio('1:1');
+      setPoolExists(true);
       return;
     }
 
     setIsCalculating(true);
 
     try {
+      // Try to get real pool data if available
+      if (dexService && tokenA && tokenB) {
+        try {
+          const pairExists = await dexService.pairExists(tokenA, tokenB);
+          setPoolExists(pairExists);
+          
+          if (pairExists) {
+            const reserves = await dexService.getPairReserves(tokenA, tokenB);
+            if (reserves) {
+              const reserveA = parseFloat(reserves.reserveA);
+              const reserveB = parseFloat(reserves.reserveB);
+              const amtA = parseFloat(amountA);
+              const amtB = parseFloat(amountB);
+              
+              // Calculate real pool ratio
+              const ratio = (reserveA / reserveB).toFixed(4);
+              setPoolRatio(`${ratio}:1`);
+              
+              // Calculate LP tokens using real reserves
+              const totalSupply = Math.sqrt(reserveA * reserveB);
+              const lpTokens = Math.sqrt(amtA * amtB);
+              const share = (lpTokens / (totalSupply + lpTokens)) * 100;
+              
+              setLpTokensToReceive(lpTokens.toFixed(6));
+              setYourShare(share);
+              
+              // Calculate price impact
+              const impact = Math.abs((amtA / reserveA - amtB / reserveB) / (amtA / reserveA)) * 100;
+              setPriceImpact(impact);
+              
+              setIsCalculating(false);
+              return;
+            }
+          }
+        } catch (realDataError) {
+          console.log('Using fallback calculation due to:', realDataError);
+        }
+      }
+
       const amtA = parseFloat(amountA);
       const amtB = parseFloat(amountB);
 
@@ -168,26 +220,40 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
   // Enhanced add liquidity with comprehensive error handling
   const handleAddLiquidity = async () => {
     if (!validateLiquidity()) return;
+    if (!dexService) {
+      toast.error('DEX service not available. Please check your connection.');
+      return;
+    }
 
     setIsLoading(true);
     try {
-      // Enhanced transaction simulation
+      // Real liquidity addition
       toast.loading('Preparing liquidity transaction...', { id: 'liquidity-loading' });
       
-      // Simulate approval process
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Execute real liquidity addition
+      const tx = await dexService.addLiquidity(
+        tokenA,
+        tokenB,
+        amountA,
+        amountB,
+        0.5 // 0.5% slippage tolerance
+      );
       
-      toast.loading('Approving tokens...', { id: 'liquidity-loading' });
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      toast.loading('Transaction submitted, waiting for confirmation...', { id: 'liquidity-loading' });
       
-      toast.loading('Adding liquidity to pool...', { id: 'liquidity-loading' });
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Wait for transaction confirmation
+      const receipt = await tx.wait();
       
       toast.dismiss('liquidity-loading');
-      toast.success(
-        `Successfully added liquidity! Received ${lpTokensToReceive} LP tokens for ${tokenA.symbol}/${tokenB.symbol} pool`,
-        { duration: 6000 }
-      );
+      
+      if (receipt.status === 1) {
+        toast.success(
+          `Successfully added liquidity! Added ${amountA} ${tokenA.symbol} and ${amountB} ${tokenB.symbol} to the pool`,
+          { duration: 6000 }
+        );
+      } else {
+        throw new Error('Transaction failed');
+      }
       
       // Reset form
       setAmountA('');
@@ -200,7 +266,14 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
     } catch (error) {
       console.error('Add liquidity failed:', error);
       toast.dismiss('liquidity-loading');
-      toast.error('Failed to add liquidity. Please try again.');
+      
+      if (error.code === 4001) {
+        toast.error('Transaction rejected by user');
+      } else if (error.message?.includes('insufficient')) {
+        toast.error('Insufficient balance or allowance');
+      } else {
+        toast.error(`Failed to add liquidity: ${error.message || 'Unknown error'}`);
+      }
     } finally {
       setIsLoading(false);
     }

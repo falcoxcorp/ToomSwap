@@ -6,6 +6,7 @@ import SettingsModal from './SettingsModal';
 import { Token, getTokenByAddress, getNativeToken, getUSDTToken } from '../constants/tokens';
 import { useWeb3 } from '../context/Web3Context';
 import { isSupraNetwork } from '../constants/addresses';
+import { DexService } from '../services/dexService';
 import toast from 'react-hot-toast';
 
 const SwapCard: React.FC = () => {
@@ -23,6 +24,17 @@ const SwapCard: React.FC = () => {
   const [liquidityProviderFee, setLiquidityProviderFee] = useState<string>('');
   const [routePath, setRoutePath] = useState<string[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [dexService, setDexService] = useState<DexService | null>(null);
+
+  // Initialize DexService when provider/signer changes
+  useEffect(() => {
+    if (provider && signer && chainId && isSupraNetwork(chainId)) {
+      const service = new DexService(provider, signer, chainId);
+      setDexService(service);
+    } else {
+      setDexService(null);
+    }
+  }, [provider, signer, chainId]);
 
   // Initialize tokens when chainId changes
   useEffect(() => {
@@ -190,23 +202,40 @@ const SwapCard: React.FC = () => {
   // Execute swap with enhanced simulation
   const handleSwap = async () => {
     if (!validateSwap()) return;
+    if (!dexService) {
+      toast.error('DEX service not available. Please check your connection.');
+      return;
+    }
 
     setIsLoading(true);
     try {
-      // Enhanced transaction simulation
-      toast.loading('Preparing transaction...', { id: 'swap-loading' });
+      // Real DEX transaction
+      toast.loading('Preparing swap transaction...', { id: 'swap-loading' });
       
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Execute real swap
+      const tx = await dexService.executeSwap(
+        fromToken,
+        toToken,
+        fromAmount,
+        toAmount,
+        slippage
+      );
       
-      toast.loading('Confirming transaction...', { id: 'swap-loading' });
+      toast.loading('Transaction submitted, waiting for confirmation...', { id: 'swap-loading' });
       
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Wait for transaction confirmation
+      const receipt = await tx.wait();
       
       toast.dismiss('swap-loading');
-      toast.success(
-        `Successfully swapped ${fromAmount} ${fromToken.symbol} for ${toAmount} ${toToken.symbol}!`,
-        { duration: 5000 }
-      );
+      
+      if (receipt.status === 1) {
+        toast.success(
+          `Successfully swapped ${fromAmount} ${fromToken.symbol} for ${toAmount} ${toToken.symbol}!`,
+          { duration: 6000 }
+        );
+      } else {
+        throw new Error('Transaction failed');
+      }
       
       // Reset form
       setFromAmount('');
@@ -220,7 +249,14 @@ const SwapCard: React.FC = () => {
     } catch (error) {
       console.error('Swap failed:', error);
       toast.dismiss('swap-loading');
-      toast.error('Swap failed. Please try again.');
+      
+      if (error.code === 4001) {
+        toast.error('Transaction rejected by user');
+      } else if (error.message?.includes('insufficient')) {
+        toast.error('Insufficient balance or allowance');
+      } else {
+        toast.error(`Swap failed: ${error.message || 'Unknown error'}`);
+      }
     } finally {
       setIsLoading(false);
     }

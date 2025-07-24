@@ -53,12 +53,13 @@ export const SUPRA_CHAIN = DEFAULT_NETWORK;
 // Contract addresses by network
 export const CONTRACT_ADDRESSES = {
   [SUPRA_MAINNET.id]: {
-    FACTORY: "0x30F2d7b7413c9A774FB92Ff2c952C9501363dd22", // Update with mainnet addresses
-    ROUTER: "0x99b5a05bCceC10f52d1fF139b5AAF852ec748Fae",
+    FACTORY: "0x30F2d7b7413c9A774FB92Ff2c952C9501363dd22", // Will be updated when mainnet is available
+    ROUTER: "0x99b5a05bCceC10f52d1fF139b5AAF852ec748Fae", // Will be updated when mainnet is available
     WSUPRA: "0xb4b7b25d5b05eee26ca81a616dfc68e069622129",
     MULTICALL: "0xcA11bde05977b3631167028862bE2a173976CA11"
   },
   [SUPRA_TESTNET.id]: {
+    // REAL SUPRA TESTNET CONTRACTS - PROVIDED BY USER
     FACTORY: "0x30F2d7b7413c9A774FB92Ff2c952C9501363dd22",
     ROUTER: "0x99b5a05bCceC10f52d1fF139b5AAF852ec748Fae",
     WSUPRA: "0xb4b7b25d5b05eee26ca81a616dfc68e069622129",

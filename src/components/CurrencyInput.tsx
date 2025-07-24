@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import TokenSelector from './TokenSelector';
 import { Token, formatTokenAmount } from '../constants/tokens';
 import { useWeb3 } from '../context/Web3Context';
+import { DexService } from '../services/dexService';
 
 interface CurrencyInputProps {
   label: string;
@@ -32,6 +33,7 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
   const { account, getTokenBalance } = useWeb3();
   const [tokenBalance, setTokenBalance] = useState<string>('0.0000');
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const { provider, signer, chainId } = useWeb3();
 
   // Fetch token balance
   useEffect(() => {
@@ -43,8 +45,16 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
 
       setIsLoadingBalance(true);
       try {
-        const balance = await getTokenBalance(selectedToken.address);
-        setTokenBalance(balance);
+        // Try to get balance using DexService for more accurate results
+        if (provider && signer && chainId) {
+          const dexService = new DexService(provider, signer, chainId);
+          const balance = await dexService.getTokenBalance(selectedToken, account);
+          setTokenBalance(balance);
+        } else {
+          // Fallback to Web3Context method
+          const balance = await getTokenBalance(selectedToken.address);
+          setTokenBalance(balance);
+        }
       } catch (error) {
         console.error('Error fetching token balance:', error);
         setTokenBalance('0.0000');
@@ -54,7 +64,7 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
     };
 
     fetchBalance();
-  }, [account, selectedToken, getTokenBalance]);
+  }, [account, selectedToken, getTokenBalance, provider, signer, chainId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
