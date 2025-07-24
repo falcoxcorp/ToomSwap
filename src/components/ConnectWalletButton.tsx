@@ -295,39 +295,6 @@ const ConnectWalletButton: React.FC = () => {
           {isConnecting ? 'Connecting...' : isStarkeyDetected ? 'Connect' : 'Install'}
         </span>
       </motion.button>
-              </span>
-            )}
-          </div>
-          <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4 hidden sm:block" />
-        </motion.button>
-      </motion.div>
-    );
-  }
-
-  return (
-    <div className="relative">
-      <motion.button
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={isStarkeyDetected ? handleWalletSelect : () => setShowWalletOptions(true)}
-        disabled={isConnecting}
-        className="
-          flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-xl font-semibold text-white
-          bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700
-          backdrop-blur-sm border border-white/10 transition-all duration-200
-          disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-base
-        "
-      >
-        <Wallet className="w-3 h-3 sm:w-4 sm:h-4" />
-        <span className="hidden sm:inline">
-          {isConnecting ? 'Connecting...' : isStarkeyDetected ? 'Connect StarKey' : 'Install StarKey'}
-        </span>
-        <span className="sm:hidden">
-          {isConnecting ? 'Connecting...' : isStarkeyDetected ? 'Connect' : 'Install'}
-        </span>
-      </motion.button>
 
       {/* StarKey Installation Modal */}
       <AnimatePresence>
