@@ -5,7 +5,7 @@ import CurrencyInput from './CurrencyInput';
 import SettingsModal from './SettingsModal';
 import { Token, getTokenByAddress, getNativeToken, getUSDTToken } from '../constants/tokens';
 import { useWeb3 } from '../context/Web3Context';
-import { isSupraNetwork } from '../constants/addresses';
+import { isSupraNetwork, getContractAddresses } from '../constants/addresses';
 import { DexService } from '../services/dexService';
 import { priceService } from '../services/priceService';
 import toast from 'react-hot-toast';
@@ -162,13 +162,14 @@ const SwapCard: React.FC = () => {
             const wsupraAddress = contracts.WSUPRA;
             if (wsupraAddress && wsupraAddress !== "0x0000000000000000000000000000000000000000") {
               const wsupraToken = { ...fromToken, address: wsupraAddress, symbol: 'WSUPRA' };
-            const pairAExists = await dexService.pairExists(fromToken, wsupraToken);
-            const pairBExists = await dexService.pairExists(wsupraToken, toToken);
-            
-            if (pairAExists && pairBExists) {
-              // Route through WSUPRA - simplified calculation
-              setRoutePath([fromToken.symbol, 'WSUPRA', toToken.symbol]);
-              // Use fallback calculation with higher fee for indirect route
+              const pairAExists = await dexService.pairExists(fromToken, wsupraToken);
+              const pairBExists = await dexService.pairExists(wsupraToken, toToken);
+              
+              if (pairAExists && pairBExists) {
+                // Route through WSUPRA - simplified calculation
+                setRoutePath([fromToken.symbol, 'WSUPRA', toToken.symbol]);
+                // Use fallback calculation with higher fee for indirect route
+              }
             }
           }
         } catch (realDataError) {
@@ -296,18 +297,6 @@ const SwapCard: React.FC = () => {
       return;
     }
     
-    // Validate amounts are finite
-    if (!isFinite(parseFloat(fromAmount)) || !isFinite(parseFloat(toAmount))) {
-      toast.error('Invalid amounts detected. Please refresh and try again.');
-      return;
-    }
-
-    // Check for minimum trade amounts
-    if (parseFloat(fromAmount) < 0.000001) {
-      toast.error(`Minimum trade amount is 0.000001 ${fromToken.symbol}`);
-      return;
-    }
-
     // Check user balance before swap
     try {
       console.log('Checking user balance before swap...');
@@ -340,11 +329,6 @@ const SwapCard: React.FC = () => {
       if (!confirmed) return;
     }
 
-    // Final safety check
-    if (!fromToken || !toToken || !account) {
-      toast.error('Missing required data for swap. Please refresh and try again.');
-      return;
-    }
     setIsLoading(true);
     try {
       // Real DEX transaction
@@ -374,18 +358,20 @@ const SwapCard: React.FC = () => {
         
         // Refresh balances after successful swap
         setTimeout(() => {
-          // Reset form instead of full reload
-          setFromAmount('');
-          setToAmount('');
-          setPriceImpact(null);
-          setExchangeRate(null);
-          setMinimumReceived('');
-          setLiquidityProviderFee('');
-          setRoutePath([]);
+          window.location.reload();
         }, 2000);
       } else {
         throw new Error('Transaction failed');
       }
+      
+      // Reset form
+      setFromAmount('');
+      setToAmount('');
+      setPriceImpact(null);
+      setExchangeRate(null);
+      setMinimumReceived('');
+      setLiquidityProviderFee('');
+      setRoutePath([]);
       
     } catch (error) {
       console.error('Swap failed:', error);
@@ -401,10 +387,6 @@ const SwapCard: React.FC = () => {
         toast.error('Insufficient liquidity for this trade');
       } else if (error.message?.includes('EXPIRED')) {
         toast.error('Transaction expired. Please try again.');
-      } else if (error.message?.includes('execution reverted')) {
-        toast.error('Transaction failed. Please check token approvals and try again.');
-      } else if (error.message?.includes('gas')) {
-        toast.error('Transaction failed due to gas issues. Please try again.');
       } else {
         toast.error(`Swap failed: ${error.message || 'Unknown error'}`);
       }
@@ -555,7 +537,6 @@ const SwapCard: React.FC = () => {
                 ? 'bg-orange-500/10 border-orange-500/20'
                 : 'bg-yellow-500/10 border-yellow-500/20'
               }
-            }
             `}>
               <AlertTriangle className={`
                 w-4 h-4 flex-shrink-0
@@ -645,8 +626,6 @@ const SwapCard: React.FC = () => {
         </motion.div>
       )}
 
-              : !isSupraNetwork(chainId || 0)
-              ? 'Switch to Supra Network'
       {/* Swap Button */}
       <motion.button
         whileHover={{ scale: 1.02 }}
@@ -679,6 +658,8 @@ const SwapCard: React.FC = () => {
           {isLoading && <Zap className="w-4 h-4 animate-pulse" />}
           {!account 
             ? 'Connect Wallet to Swap'
+            : !isSupraNetwork(chainId || 0)
+            ? 'Switch to Supra Network'
             : isLoading 
             ? 'Swapping...'
             : isCalculating
