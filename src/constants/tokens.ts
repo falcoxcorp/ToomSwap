@@ -22,7 +22,7 @@ export const TOKENS_BY_NETWORK = {
     WSUPRA: {
       name: "Wrapped Supra",
       symbol: "WSUPRA",
-      address: "0xb4b7b25d5b05eee26ca81a616dfc68e069622129", // Update with mainnet address
+      address: "0x0000000000000000000000000000000000000000", // ACTUALIZAR CON DIRECCIÓN REAL DE MAINNET
       chainId: 7,
       decimals: 18,
       logoURI: "https://photos.pinksale.finance/file/pinksale-logo-upload/1751321928620-ab24aa4fccb165dc3ea539fa6f40d2c9.png"
@@ -30,7 +30,7 @@ export const TOKENS_BY_NETWORK = {
     USDT: {
       name: "Tether USD",
       symbol: "USDT",
-      address: "0x900101d06a7426441ae63e9ab3b9b0f63be145f1", // Update with mainnet address
+      address: "0x0000000000000000000000000000000000000000", // ACTUALIZAR CON DIRECCIÓN REAL DE MAINNET
       chainId: 7,
       decimals: 6,
       logoURI: "https://pipiswap.finance/images/tokens/0x900101d06a7426441ae63e9ab3b9b0f63be145f1.png"
@@ -38,7 +38,7 @@ export const TOKENS_BY_NETWORK = {
     TOON: {
       name: "ToonSwap Token",
       symbol: "TOON",
-      address: "0x1234567890123456789012345678901234567890", // Update with mainnet address
+      address: "0x0000000000000000000000000000000000000000", // ACTUALIZAR CON DIRECCIÓN REAL DE MAINNET
       chainId: 7,
       decimals: 18,
       logoURI: "https://photos.pinksale.finance/file/pinksale-logo-upload/1751326180150-96821ac49491ed824047c2ffa1217f78.png"

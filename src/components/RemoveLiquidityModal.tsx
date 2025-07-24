@@ -65,6 +65,16 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
       return;
     }
 
+    // Verificar si estamos en mainnet con contratos no configurados
+    const { chainId } = useWeb3();
+    if (chainId === 7) { // Mainnet
+      const contracts = getContractAddresses(chainId);
+      if (contracts.ROUTER === "0x0000000000000000000000000000000000000000") {
+        toast.error('Mainnet contracts not yet deployed. Please use Supra Testnet for now.');
+        return;
+      }
+    }
+
     setIsLoading(true);
     try {
       // Real remove liquidity transaction

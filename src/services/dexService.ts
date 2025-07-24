@@ -149,6 +149,15 @@ export class DexService {
     slippageTolerance: number = 0.5
   ): Promise<ethers.ContractTransaction> {
     try {
+      console.log('🔄 Iniciando swap:', {
+        tokenIn: tokenIn.symbol,
+        tokenOut: tokenOut.symbol,
+        amountIn,
+        amountOutMin,
+        slippageTolerance,
+        chainId: this.chainId
+      });
+
       // Validate inputs
       if (!tokenIn || !tokenOut) {
         throw new Error('Invalid tokens provided');
@@ -160,6 +169,15 @@ export class DexService {
       
       if (!amountOutMin || parseFloat(amountOutMin) <= 0) {
         throw new Error('Invalid output amount');
+      }
+
+      // Verificar que los contratos no sean direcciones cero (mainnet sin configurar)
+      if (this.contracts.ROUTER === "0x0000000000000000000000000000000000000000") {
+        throw new Error('Router contract not configured for this network. Please use testnet or wait for mainnet deployment.');
+      }
+
+      if (this.contracts.FACTORY === "0x0000000000000000000000000000000000000000") {
+        throw new Error('Factory contract not configured for this network. Please use testnet or wait for mainnet deployment.');
       }
       
       const router = this.getRouterContract();
@@ -173,10 +191,18 @@ export class DexService {
       const slippageMultiplier = (100 - slippageTolerance) / 100;
       const finalAmountOutMin = amountOutMinWei.mul(Math.floor(slippageMultiplier * 100)).div(100);
 
+      console.log('💰 Swap parameters:', {
+        amountInWei: amountInWei.toString(),
+        finalAmountOutMin: finalAmountOutMin.toString(),
+        deadline,
+        account
+      });
+
       let tx: ethers.ContractTransaction;
 
       if (isNativeToken(tokenIn)) {
         // Swapping native SUPRA for tokens
+        console.log('🔄 Executing: Native SUPRA → Token');
         tx = await router.swapExactETHForTokens(
           finalAmountOutMin,
           [this.contracts.WSUPRA, tokenOut.address],
@@ -186,6 +212,7 @@ export class DexService {
         );
       } else if (isNativeToken(tokenOut)) {
         // Swapping tokens for native SUPRA
+        console.log('🔄 Executing: Token → Native SUPRA');
         await this.checkAndApproveToken(tokenIn, amountIn);
         tx = await router.swapExactTokensForETH(
           amountInWei,
@@ -196,6 +223,7 @@ export class DexService {
         );
       } else {
         // Swapping tokens for tokens
+        console.log('🔄 Executing: Token → Token');
         await this.checkAndApproveToken(tokenIn, amountIn);
         
         // Check if direct pair exists, otherwise route through WSUPRA
@@ -203,9 +231,11 @@ export class DexService {
         let path: string[];
         
         if (directPairExists) {
+          console.log('📍 Using direct pair route');
           path = [tokenIn.address, tokenOut.address];
         } else {
           // Route through WSUPRA
+          console.log('📍 Using WSUPRA route');
           path = [tokenIn.address, this.contracts.WSUPRA, tokenOut.address];
         }
         
@@ -218,6 +248,7 @@ export class DexService {
         );
       }
 
+      console.log('✅ Swap transaction created:', tx.hash);
       return tx;
     } catch (error) {
       console.error('Error executing swap:', error);
@@ -234,6 +265,15 @@ export class DexService {
     slippageTolerance: number = 0.5
   ): Promise<ethers.ContractTransaction> {
     try {
+      console.log('💧 Iniciando add liquidity:', {
+        tokenA: tokenA.symbol,
+        tokenB: tokenB.symbol,
+        amountA,
+        amountB,
+        slippageTolerance,
+        chainId: this.chainId
+      });
+
       // Validate inputs
       if (!tokenA || !tokenB) {
         throw new Error('Invalid tokens provided');
@@ -250,6 +290,11 @@ export class DexService {
       if (tokenA.address === tokenB.address) {
         throw new Error('Cannot add liquidity with same token');
       }
+
+      // Verificar contratos configurados
+      if (this.contracts.ROUTER === "0x0000000000000000000000000000000000000000") {
+        throw new Error('Router contract not configured for this network. Please use testnet or wait for mainnet deployment.');
+      }
       
       const router = this.getRouterContract();
       const account = await this.signer.getAddress();
@@ -263,10 +308,20 @@ export class DexService {
       const amountAMin = amountAWei.mul(Math.floor(slippageMultiplier * 100)).div(100);
       const amountBMin = amountBWei.mul(Math.floor(slippageMultiplier * 100)).div(100);
 
+      console.log('💰 Liquidity parameters:', {
+        amountAWei: amountAWei.toString(),
+        amountBWei: amountBWei.toString(),
+        amountAMin: amountAMin.toString(),
+        amountBMin: amountBMin.toString(),
+        deadline,
+        account
+      });
+
       let tx: ethers.ContractTransaction;
 
       if (isNativeToken(tokenA)) {
         // Adding native SUPRA + token liquidity
+        console.log('💧 Executing: Native SUPRA + Token liquidity');
         await this.checkAndApproveToken(tokenB, amountB);
         tx = await router.addLiquidityETH(
           tokenB.address,
@@ -279,6 +334,7 @@ export class DexService {
         );
       } else if (isNativeToken(tokenB)) {
         // Adding token + native SUPRA liquidity
+        console.log('💧 Executing: Token + Native SUPRA liquidity');
         await this.checkAndApproveToken(tokenA, amountA);
         tx = await router.addLiquidityETH(
           tokenA.address,
@@ -291,6 +347,7 @@ export class DexService {
         );
       } else {
         // Adding token + token liquidity
+        console.log('💧 Executing: Token + Token liquidity');
         await this.checkAndApproveToken(tokenA, amountA);
         await this.checkAndApproveToken(tokenB, amountB);
         tx = await router.addLiquidity(
@@ -305,6 +362,7 @@ export class DexService {
         );
       }
 
+      console.log('✅ Add liquidity transaction created:', tx.hash);
       return tx;
     } catch (error) {
       console.error('Error adding liquidity:', error);
@@ -321,6 +379,15 @@ export class DexService {
     amountBMin: string
   ): Promise<ethers.ContractTransaction> {
     try {
+      console.log('🔥 Iniciando remove liquidity:', {
+        tokenA: tokenA.symbol,
+        tokenB: tokenB.symbol,
+        liquidity,
+        amountAMin,
+        amountBMin,
+        chainId: this.chainId
+      });
+
       // Validate inputs
       if (!tokenA || !tokenB) {
         throw new Error('Invalid tokens provided');
@@ -328,6 +395,11 @@ export class DexService {
       
       if (!liquidity || parseFloat(liquidity) <= 0) {
         throw new Error('Invalid liquidity amount');
+      }
+
+      // Verificar contratos configurados
+      if (this.contracts.ROUTER === "0x0000000000000000000000000000000000000000") {
+        throw new Error('Router contract not configured for this network. Please use testnet or wait for mainnet deployment.');
       }
       
       const router = this.getRouterContract();
@@ -342,20 +414,31 @@ export class DexService {
       const pairAddress = await this.getPairAddress(tokenA, tokenB);
       if (!pairAddress) throw new Error('Pair does not exist');
 
+      console.log('🔍 LP Token approval for pair:', pairAddress);
       const pairContract = this.getPairContract(pairAddress);
       const allowance = await pairContract.allowance(account, this.contracts.ROUTER);
       
       if (allowance.lt(liquidityWei)) {
         // Approve with some buffer for gas fluctuations
         const approveAmount = liquidityWei.add(ethers.utils.parseUnits('0.001', 18));
+        console.log('✅ Approving LP tokens:', approveAmount.toString());
         const approveTx = await pairContract.approve(this.contracts.ROUTER, approveAmount);
         await approveTx.wait();
       }
+
+      console.log('💰 Remove liquidity parameters:', {
+        liquidityWei: liquidityWei.toString(),
+        amountAMinWei: amountAMinWei.toString(),
+        amountBMinWei: amountBMinWei.toString(),
+        deadline,
+        account
+      });
 
       let tx: ethers.ContractTransaction;
 
       if (isNativeToken(tokenA) || isNativeToken(tokenB)) {
         // Removing liquidity with native SUPRA
+        console.log('🔥 Executing: Remove liquidity with native SUPRA');
         const token = isNativeToken(tokenA) ? tokenB : tokenA;
         const tokenMin = isNativeToken(tokenA) ? amountBMinWei : amountAMinWei;
         const ethMin = isNativeToken(tokenA) ? amountAMinWei : amountBMinWei;
@@ -370,6 +453,7 @@ export class DexService {
         );
       } else {
         // Removing token + token liquidity
+        console.log('🔥 Executing: Remove token + token liquidity');
         tx = await router.removeLiquidity(
           tokenA.address,
           tokenB.address,
@@ -381,6 +465,7 @@ export class DexService {
         );
       }
 
+      console.log('✅ Remove liquidity transaction created:', tx.hash);
       return tx;
     } catch (error) {
       console.error('Error removing liquidity:', error);

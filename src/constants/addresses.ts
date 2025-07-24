@@ -9,11 +9,11 @@ export const SUPRA_MAINNET = {
     symbol: "SUPRA"
   },
   rpcUrls: {
-    default: { http: ["https://rpc-mainnet.supra.com"] },
-    public: { http: ["https://rpc-mainnet.supra.com"] }
+    default: { http: ["https://rpc-mainnet.supra.com", "https://rpc.supra.com"] },
+    public: { http: ["https://rpc-mainnet.supra.com", "https://rpc.supra.com"] }
   },
   blockExplorers: {
-    default: { name: "SupraScan", url: "https://explorer.supra.com" }
+    default: { name: "SupraScan", url: "https://suprascan.io" }
   },
   testnet: false
 };
@@ -29,11 +29,11 @@ export const SUPRA_TESTNET = {
     symbol: "SUPRA"
   },
   rpcUrls: {
-    default: { http: ["https://rpc-testnet.supra.com"] },
-    public: { http: ["https://rpc-testnet.supra.com"] }
+    default: { http: ["https://rpc-testnet.supra.com", "https://testnet-rpc.supra.com"] },
+    public: { http: ["https://rpc-testnet.supra.com", "https://testnet-rpc.supra.com"] }
   },
   blockExplorers: {
-    default: { name: "SupraScan", url: "https://testnet-explorer.supra.com" }
+    default: { name: "SupraScan Testnet", url: "https://testnet.suprascan.io" }
   },
   testnet: true
 };
@@ -45,7 +45,7 @@ export const SUPPORTED_NETWORKS = {
 };
 
 // Default network (can be changed based on environment)
-export const DEFAULT_NETWORK = SUPRA_TESTNET; // Change to SUPRA_MAINNET for production
+export const DEFAULT_NETWORK = SUPRA_TESTNET; // Testnet por defecto para desarrollo
 
 // Legacy export for backward compatibility
 export const SUPRA_CHAIN = DEFAULT_NETWORK;
@@ -53,9 +53,10 @@ export const SUPRA_CHAIN = DEFAULT_NETWORK;
 // Contract addresses by network
 export const CONTRACT_ADDRESSES = {
   [SUPRA_MAINNET.id]: {
-    FACTORY: "0x30F2d7b7413c9A774FB92Ff2c952C9501363dd22", // Will be updated when mainnet is available
-    ROUTER: "0x99b5a05bCceC10f52d1fF139b5AAF852ec748Fae", // Will be updated when mainnet is available
-    WSUPRA: "0xb4b7b25d5b05eee26ca81a616dfc68e069622129",
+    // NOTA: Estos contratos de mainnet necesitan ser actualizados con las direcciones reales
+    FACTORY: "0x0000000000000000000000000000000000000000", // ACTUALIZAR CON DIRECCIÓN REAL DE MAINNET
+    ROUTER: "0x0000000000000000000000000000000000000000", // ACTUALIZAR CON DIRECCIÓN REAL DE MAINNET
+    WSUPRA: "0x0000000000000000000000000000000000000000", // ACTUALIZAR CON DIRECCIÓN REAL DE MAINNET
     MULTICALL: "0xcA11bde05977b3631167028862bE2a173976CA11"
   },
   [SUPRA_TESTNET.id]: {

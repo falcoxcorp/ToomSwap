@@ -235,6 +235,15 @@ const SwapCard: React.FC = () => {
       return;
     }
 
+    // Verificar si estamos en mainnet con contratos no configurados
+    if (chainId === 7) { // Mainnet
+      const contracts = getContractAddresses(chainId);
+      if (contracts.ROUTER === "0x0000000000000000000000000000000000000000") {
+        toast.error('Mainnet contracts not yet deployed. Please use Supra Testnet for now.');
+        return;
+      }
+    }
+
     // Additional validation before swap
     if (!toAmount || parseFloat(toAmount) <= 0) {
       toast.error('Invalid output amount calculated');

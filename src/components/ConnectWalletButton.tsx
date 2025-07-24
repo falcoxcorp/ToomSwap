@@ -242,14 +242,21 @@ const ConnectWalletButton: React.FC = () => {
                           w-3 h-3 rounded-full flex-shrink-0
                           ${network.testnet 
                             ? 'bg-blue-400' 
-                            : 'bg-green-400'
+                            : 'bg-orange-400'
                           }
                           ${chainId === network.id ? 'animate-pulse' : ''}
                         `} />
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm">{network.name}</div>
+                          <div className="font-medium text-sm">
+                            {network.name}
+                            {!network.testnet && (
+                              <span className="ml-2 px-2 py-0.5 text-xs bg-orange-500/20 text-orange-300 rounded">
+                                Beta
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs text-gray-400">
-                            Chain ID: {network.id} • {network.testnet ? 'Testnet' : 'Mainnet'}
+                            Chain ID: {network.id} • {network.testnet ? 'Testnet - Full Features' : 'Mainnet - Limited'}
                           </div>
                         </div>
                         {chainId === network.id && (
@@ -267,6 +274,18 @@ const ConnectWalletButton: React.FC = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* Mainnet Warning */}
+                  <div className="mt-3 p-3 rounded-xl bg-orange-500/10 border border-orange-500/20">
+                    <div className="flex items-center gap-2 text-xs text-orange-300 mb-2">
+                      <AlertCircle className="w-3 h-3" />
+                      <span className="font-medium">Network Status</span>
+                    </div>
+                    <div className="text-xs text-orange-200 space-y-1">
+                      <div>• <strong>Testnet:</strong> Full trading & LP features available</div>
+                      <div>• <strong>Mainnet:</strong> Contracts pending deployment</div>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             </>

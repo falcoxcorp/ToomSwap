@@ -246,6 +246,15 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
       return;
     }
 
+    // Verificar si estamos en mainnet con contratos no configurados
+    if (chainId === 7) { // Mainnet
+      const contracts = getContractAddresses(chainId);
+      if (contracts.ROUTER === "0x0000000000000000000000000000000000000000") {
+        toast.error('Mainnet contracts not yet deployed. Please use Supra Testnet for now.');
+        return;
+      }
+    }
+
     // Additional validations
     if (priceImpact > 10) {
       const confirmed = window.confirm(
