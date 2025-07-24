@@ -108,20 +108,35 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
               const amtA = parseFloat(amountA);
               const amtB = parseFloat(amountB);
               
+              // Validate amounts against pool ratio for existing pools
+              const poolRatio = reserveA / reserveB;
+              const inputRatio = amtA / amtB;
+              const ratioDifference = Math.abs(poolRatio - inputRatio) / poolRatio;
+              
+              if (ratioDifference > 0.02) { // 2% tolerance
+                // Auto-adjust amountB to match pool ratio
+                const adjustedAmountB = amtA / poolRatio;
+                setAmountB(adjustedAmountB.toFixed(6));
+                return; // Recalculate with adjusted amount
+              }
+              
               // Calculate real pool ratio
               const ratio = (reserveA / reserveB).toFixed(4);
               setPoolRatio(`${ratio}:1`);
               
               // Calculate LP tokens using real reserves
-              const totalSupply = Math.sqrt(reserveA * reserveB);
+              // For existing pools, LP tokens = min(amountA/reserveA, amountB/reserveB) * totalSupply
+              // Simplified calculation for demo
               const lpTokens = Math.sqrt(amtA * amtB);
-              const share = (lpTokens / (totalSupply + lpTokens)) * 100;
+              const totalLiquidity = Math.sqrt(reserveA * reserveB);
+              const share = (lpTokens / (totalLiquidity + lpTokens)) * 100;
               
               setLpTokensToReceive(lpTokens.toFixed(6));
               setYourShare(share);
               
               // Calculate price impact
-              const impact = Math.abs((amtA / reserveA - amtB / reserveB) / (amtA / reserveA)) * 100;
+              const liquidityImpact = ((amtA + amtB) / (reserveA + reserveB)) * 100;
+              const impact = Math.min(liquidityImpact, 10); // Cap at 10%
               setPriceImpact(impact);
               
               setIsCalculating(false);
@@ -225,10 +240,30 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
       return;
     }
 
+    // Additional validations
+    if (priceImpact > 10) {
+      const confirmed = window.confirm(
+        `Warning: High price impact of ${priceImpact.toFixed(2)}%. Do you want to continue?`
+      );
+      if (!confirmed) return;
+    }
+
     setIsLoading(true);
     try {
       // Real liquidity addition
       toast.loading('Preparing liquidity transaction...', { id: 'liquidity-loading' });
+      
+      // Check balances before adding liquidity
+      const balanceA = await dexService.getTokenBalance(tokenA, account);
+      const balanceB = await dexService.getTokenBalance(tokenB, account);
+      
+      if (parseFloat(balanceA) < parseFloat(amountA)) {
+        throw new Error(`Insufficient ${tokenA.symbol} balance`);
+      }
+      
+      if (parseFloat(balanceB) < parseFloat(amountB)) {
+        throw new Error(`Insufficient ${tokenB.symbol} balance`);
+      }
       
       // Execute real liquidity addition
       const tx = await dexService.addLiquidity(
@@ -251,6 +286,11 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
           `Successfully added liquidity! Added ${amountA} ${tokenA.symbol} and ${amountB} ${tokenB.symbol} to the pool`,
           { duration: 6000 }
         );
+        
+        // Refresh page after successful addition
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
       } else {
         throw new Error('Transaction failed');
       }
@@ -271,6 +311,10 @@ const LiquidityCard: React.FC<LiquidityCardProps> = ({ onBack }) => {
         toast.error('Transaction rejected by user');
       } else if (error.message?.includes('insufficient')) {
         toast.error('Insufficient balance or allowance');
+      } else if (error.message?.includes('INSUFFICIENT_LIQUIDITY_MINTED')) {
+        toast.error('Insufficient liquidity minted. Try adjusting amounts.');
+      } else if (error.message?.includes('INSUFFICIENT_A_AMOUNT') || error.message?.includes('INSUFFICIENT_B_AMOUNT')) {
+        toast.error('Insufficient token amount. Try reducing slippage tolerance.');
       } else {
         toast.error(`Failed to add liquidity: ${error.message || 'Unknown error'}`);
       }

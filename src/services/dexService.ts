@@ -86,9 +86,24 @@ export class DexService {
   async getAmountsOut(amountIn: string, path: string[]): Promise<string[]> {
     try {
       const router = this.getRouterContract();
+      
+      // Validate path
+      if (!path || path.length < 2) {
+        throw new Error('Invalid swap path');
+      }
+      
+      // Convert token symbols to addresses if needed
+      const addressPath = path.map(tokenAddress => {
+        if (tokenAddress.startsWith('0x')) {
+          return tokenAddress;
+        }
+        // If it's a symbol, we need to convert it to address
+        throw new Error('Path must contain token addresses, not symbols');
+      });
+      
       const amounts = await router.getAmountsOut(
         ethers.utils.parseUnits(amountIn, 18),
-        path
+        addressPath
       );
       return amounts.map((amount: ethers.BigNumber) => ethers.utils.formatUnits(amount, 18));
     } catch (error) {
@@ -134,6 +149,19 @@ export class DexService {
     slippageTolerance: number = 0.5
   ): Promise<ethers.ContractTransaction> {
     try {
+      // Validate inputs
+      if (!tokenIn || !tokenOut) {
+        throw new Error('Invalid tokens provided');
+      }
+      
+      if (!amountIn || parseFloat(amountIn) <= 0) {
+        throw new Error('Invalid input amount');
+      }
+      
+      if (!amountOutMin || parseFloat(amountOutMin) <= 0) {
+        throw new Error('Invalid output amount');
+      }
+      
       const router = this.getRouterContract();
       const account = await this.signer.getAddress();
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
@@ -149,7 +177,6 @@ export class DexService {
 
       if (isNativeToken(tokenIn)) {
         // Swapping native SUPRA for tokens
-        await this.checkAndApproveToken(tokenOut, '0'); // Just to validate
         tx = await router.swapExactETHForTokens(
           finalAmountOutMin,
           [this.contracts.WSUPRA, tokenOut.address],
@@ -170,10 +197,22 @@ export class DexService {
       } else {
         // Swapping tokens for tokens
         await this.checkAndApproveToken(tokenIn, amountIn);
+        
+        // Check if direct pair exists, otherwise route through WSUPRA
+        const directPairExists = await this.pairExists(tokenIn, tokenOut);
+        let path: string[];
+        
+        if (directPairExists) {
+          path = [tokenIn.address, tokenOut.address];
+        } else {
+          // Route through WSUPRA
+          path = [tokenIn.address, this.contracts.WSUPRA, tokenOut.address];
+        }
+        
         tx = await router.swapExactTokensForTokens(
           amountInWei,
           finalAmountOutMin,
-          [tokenIn.address, tokenOut.address],
+          path,
           account,
           deadline
         );
@@ -195,6 +234,23 @@ export class DexService {
     slippageTolerance: number = 0.5
   ): Promise<ethers.ContractTransaction> {
     try {
+      // Validate inputs
+      if (!tokenA || !tokenB) {
+        throw new Error('Invalid tokens provided');
+      }
+      
+      if (!amountA || parseFloat(amountA) <= 0) {
+        throw new Error('Invalid amount A');
+      }
+      
+      if (!amountB || parseFloat(amountB) <= 0) {
+        throw new Error('Invalid amount B');
+      }
+      
+      if (tokenA.address === tokenB.address) {
+        throw new Error('Cannot add liquidity with same token');
+      }
+      
       const router = this.getRouterContract();
       const account = await this.signer.getAddress();
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
@@ -265,6 +321,15 @@ export class DexService {
     amountBMin: string
   ): Promise<ethers.ContractTransaction> {
     try {
+      // Validate inputs
+      if (!tokenA || !tokenB) {
+        throw new Error('Invalid tokens provided');
+      }
+      
+      if (!liquidity || parseFloat(liquidity) <= 0) {
+        throw new Error('Invalid liquidity amount');
+      }
+      
       const router = this.getRouterContract();
       const account = await this.signer.getAddress();
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
@@ -281,7 +346,9 @@ export class DexService {
       const allowance = await pairContract.allowance(account, this.contracts.ROUTER);
       
       if (allowance.lt(liquidityWei)) {
-        const approveTx = await pairContract.approve(this.contracts.ROUTER, liquidityWei);
+        // Approve with some buffer for gas fluctuations
+        const approveAmount = liquidityWei.add(ethers.utils.parseUnits('0.001', 18));
+        const approveTx = await pairContract.approve(this.contracts.ROUTER, approveAmount);
         await approveTx.wait();
       }
 

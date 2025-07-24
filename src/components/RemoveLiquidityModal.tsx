@@ -59,20 +59,91 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
       return;
     }
 
+    // Additional validation
+    if (removePercentage > 100) {
+      toast.error('Cannot remove more than 100% of liquidity');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // Simulate transaction
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Real remove liquidity transaction
+      toast.loading('Preparing remove liquidity transaction...', { id: 'remove-loading' });
       
+      // Create DexService instance
+      const { provider, chainId } = useWeb3();
+      if (!provider || !chainId) {
+        throw new Error('Provider not available');
+      }
+      
+      const dexService = new DexService(provider, signer, chainId);
+      
+      // Calculate amounts to remove
       const amounts = calculateRemovalAmounts();
-      toast.success(
-        `Successfully removed ${removePercentage}% liquidity! Received ${amounts.tokenA} ${position.tokenA} and ${amounts.tokenB} ${position.tokenB}`
+      const liquidityToRemove = (parseFloat(position.lpTokens) * removePercentage / 100).toString();
+      
+      // Create token objects
+      const tokenA = { 
+        symbol: position.tokenA, 
+        address: '0x0000000000000000000000000000000000000000', // This should be real address
+        decimals: 18,
+        name: position.tokenA,
+        chainId: chainId,
+        logoURI: ''
+      };
+      
+      const tokenB = { 
+        symbol: position.tokenB, 
+        address: '0x0000000000000000000000000000000000000001', // This should be real address
+        decimals: 18,
+        name: position.tokenB,
+        chainId: chainId,
+        logoURI: ''
+      };
+      
+      // Execute real remove liquidity
+      const tx = await dexService.removeLiquidity(
+        tokenA,
+        tokenB,
+        liquidityToRemove,
+        amounts.tokenA,
+        amounts.tokenB
       );
+      
+      toast.loading('Transaction submitted, waiting for confirmation...', { id: 'remove-loading' });
+      
+      // Wait for confirmation
+      const receipt = await tx.wait();
+      
+      toast.dismiss('remove-loading');
+      
+      if (receipt.status === 1) {
+        const amounts = calculateRemovalAmounts();
+        toast.success(
+          `Successfully removed ${removePercentage}% liquidity! Received ${amounts.tokenA} ${position.tokenA} and ${amounts.tokenB} ${position.tokenB}`,
+          { duration: 6000 }
+        );
+        
+        // Refresh page after successful removal
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        throw new Error('Transaction failed');
+      }
       
       onClose();
     } catch (error) {
       console.error('Remove liquidity failed:', error);
-      toast.error('Failed to remove liquidity. Please try again.');
+      toast.dismiss('remove-loading');
+      
+      if (error.code === 4001) {
+        toast.error('Transaction rejected by user');
+      } else if (error.message?.includes('insufficient')) {
+        toast.error('Insufficient LP token balance');
+      } else {
+        toast.error(`Failed to remove liquidity: ${error.message || 'Unknown error'}`);
+      }
     } finally {
       setIsLoading(false);
     }

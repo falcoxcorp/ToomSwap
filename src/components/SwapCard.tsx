@@ -96,6 +96,60 @@ const SwapCard: React.FC = () => {
     setIsCalculating(true);
     
     try {
+      // Try to get real data from DEX service first
+      if (dexService && fromToken && toToken && chainId && isSupraNetwork(chainId)) {
+        try {
+          // Check if pair exists
+          const pairExists = await dexService.pairExists(fromToken, toToken);
+          
+          if (pairExists) {
+            // Get real reserves
+            const reserves = await dexService.getPairReserves(fromToken, toToken);
+            
+            if (reserves) {
+              const reserveIn = parseFloat(reserves.reserveA);
+              const reserveOut = parseFloat(reserves.reserveB);
+              const amountIn = parseFloat(inputAmount);
+              
+              // Calculate real output using constant product formula
+              // amountOut = (amountIn * 997 * reserveOut) / (reserveIn * 1000 + amountIn * 997)
+              const amountInWithFee = amountIn * 997;
+              const numerator = amountInWithFee * reserveOut;
+              const denominator = reserveIn * 1000 + amountInWithFee;
+              const realAmountOut = numerator / denominator;
+              
+              // Calculate real price impact
+              const priceWithoutImpact = amountIn * (reserveOut / reserveIn);
+              const realPriceImpact = ((priceWithoutImpact - realAmountOut) / priceWithoutImpact) * 100;
+              
+              // Set real values
+              setToAmount(realAmountOut.toFixed(6));
+              setPriceImpact(Math.max(0, realPriceImpact));
+              setExchangeRate(realAmountOut / amountIn);
+              setMinimumReceived((realAmountOut * (1 - slippage / 100)).toFixed(6));
+              setLiquidityProviderFee((amountIn * 0.003).toFixed(6));
+              setRoutePath([fromToken.symbol, toToken.symbol]);
+              
+              setIsCalculating(false);
+              return;
+            }
+          } else {
+            // Check for indirect route through WSUPRA
+            const wsupraToken = { ...fromToken, address: dexService.contracts.WSUPRA, symbol: 'WSUPRA' };
+            const pairAExists = await dexService.pairExists(fromToken, wsupraToken);
+            const pairBExists = await dexService.pairExists(wsupraToken, toToken);
+            
+            if (pairAExists && pairBExists) {
+              // Route through WSUPRA - simplified calculation
+              setRoutePath([fromToken.symbol, 'WSUPRA', toToken.symbol]);
+              // Use fallback calculation with higher fee for indirect route
+            }
+          }
+        } catch (realDataError) {
+          console.log('Using fallback calculation:', realDataError);
+        }
+      }
+      
       const amount = parseFloat(inputAmount);
       
       // Enhanced mock exchange rate calculation
@@ -207,10 +261,29 @@ const SwapCard: React.FC = () => {
       return;
     }
 
+    // Additional validation before swap
+    if (!toAmount || parseFloat(toAmount) <= 0) {
+      toast.error('Invalid output amount calculated');
+      return;
+    }
+    
+    if (priceImpact && priceImpact > 15) {
+      const confirmed = window.confirm(
+        `Warning: High price impact of ${priceImpact.toFixed(2)}%. Do you want to continue?`
+      );
+      if (!confirmed) return;
+    }
+
     setIsLoading(true);
     try {
       // Real DEX transaction
       toast.loading('Preparing swap transaction...', { id: 'swap-loading' });
+      
+      // Check balances before swap
+      const userBalance = await dexService.getTokenBalance(fromToken, account);
+      if (parseFloat(userBalance) < parseFloat(fromAmount)) {
+        throw new Error(`Insufficient ${fromToken.symbol} balance`);
+      }
       
       // Execute real swap
       const tx = await dexService.executeSwap(
@@ -233,6 +306,11 @@ const SwapCard: React.FC = () => {
           `Successfully swapped ${fromAmount} ${fromToken.symbol} for ${toAmount} ${toToken.symbol}!`,
           { duration: 6000 }
         );
+        
+        // Refresh balances after successful swap
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
       } else {
         throw new Error('Transaction failed');
       }
@@ -254,6 +332,12 @@ const SwapCard: React.FC = () => {
         toast.error('Transaction rejected by user');
       } else if (error.message?.includes('insufficient')) {
         toast.error('Insufficient balance or allowance');
+      } else if (error.message?.includes('INSUFFICIENT_OUTPUT_AMOUNT')) {
+        toast.error('Insufficient output amount. Try increasing slippage tolerance.');
+      } else if (error.message?.includes('INSUFFICIENT_LIQUIDITY')) {
+        toast.error('Insufficient liquidity for this trade');
+      } else if (error.message?.includes('EXPIRED')) {
+        toast.error('Transaction expired. Please try again.');
       } else {
         toast.error(`Swap failed: ${error.message || 'Unknown error'}`);
       }

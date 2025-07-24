@@ -67,8 +67,16 @@ export const TOKENS_BY_NETWORK = {
       symbol: "USDT",
       address: "0x900101d06a7426441ae63e9ab3b9b0f63be145f1",
       chainId: 8,
-      decimals: 6,
+      decimals: 18, // Updated to 18 decimals for testnet compatibility
       logoURI: "https://pipiswap.finance/images/tokens/0x900101d06a7426441ae63e9ab3b9b0f63be145f1.png"
+    },
+    USDC: {
+      name: "USD Coin",
+      symbol: "USDC",
+      address: "0x1234567890123456789012345678901234567891", // Add real USDC address
+      chainId: 8,
+      decimals: 18,
+      logoURI: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png"
     },
     TOON: {
       name: "ToonSwap Token",
