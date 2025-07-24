@@ -241,6 +241,31 @@ const SwapCard: React.FC = () => {
       return;
     }
     
+    // Check user balance before swap
+    try {
+      console.log('Checking user balance before swap...');
+      const userBalance = await dexService.getTokenBalance(fromToken, account);
+      const requiredAmount = parseFloat(fromAmount);
+      const availableBalance = parseFloat(userBalance);
+      
+      console.log(`Required: ${requiredAmount} ${fromToken.symbol}, Available: ${availableBalance} ${fromToken.symbol}`);
+      
+      if (availableBalance < requiredAmount) {
+        toast.error(`Insufficient ${fromToken.symbol} balance. Required: ${requiredAmount}, Available: ${availableBalance.toFixed(4)}`);
+        return;
+      }
+      
+      // For native tokens, leave some for gas
+      if (isNativeToken(fromToken) && availableBalance - requiredAmount < 0.01) {
+        toast.error(`Insufficient ${fromToken.symbol} balance for gas fees. Please leave at least 0.01 ${fromToken.symbol} for transaction fees.`);
+        return;
+      }
+    } catch (balanceError) {
+      console.error('Error checking balance:', balanceError);
+      toast.error('Could not verify balance. Please try again.');
+      return;
+    }
+    
     if (priceImpact && priceImpact > 15) {
       const confirmed = window.confirm(
         `Warning: High price impact of ${priceImpact.toFixed(2)}%. Do you want to continue?`
@@ -252,12 +277,6 @@ const SwapCard: React.FC = () => {
     try {
       // Real DEX transaction
       toast.loading('Preparing swap transaction...', { id: 'swap-loading' });
-      
-      // Check balances before swap
-      const userBalance = await dexService.getTokenBalance(fromToken, account);
-      if (parseFloat(userBalance) < parseFloat(fromAmount)) {
-        throw new Error(`Insufficient ${fromToken.symbol} balance`);
-      }
       
       // Execute real swap
       const tx = await dexService.executeSwap(
@@ -559,15 +578,20 @@ const SwapCard: React.FC = () => {
         whileTap={{ scale: 0.98 }}
         onClick={handleSwap}
         disabled={isSwapDisabled}
-        className="
+        className={`
           w-full mt-4 sm:mt-6 py-3 sm:py-4 rounded-2xl font-semibold text-base sm:text-lg
-          bg-gradient-to-r from-purple-600 to-blue-600
-          hover:from-purple-700 hover:to-blue-700
-          disabled:from-gray-600 disabled:to-gray-700
+          ${!account 
+            ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700'
+            : !isSupraNetwork(chainId || 0)
+            ? 'bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700'
+            : isSwapDisabled
+            ? 'bg-gradient-to-r from-gray-600 to-gray-700'
+            : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700'
+          }
           disabled:cursor-not-allowed text-white
           transition-all duration-200 relative overflow-hidden
           flex items-center justify-center gap-2
-        "
+        `}
       >
         {isLoading && (
           <motion.div

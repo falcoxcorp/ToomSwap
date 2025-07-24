@@ -41,25 +41,38 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
   // Fetch token balance
   useEffect(() => {
     const fetchBalance = async () => {
-      if (!account || !selectedToken) {
+      if (!account) {
+        console.log('CurrencyInput: No account connected');
+        setTokenBalance('0.0000');
+        return;
+      }
+      
+      if (!selectedToken) {
+        console.log('CurrencyInput: No token selected');
         setTokenBalance('0.0000');
         return;
       }
 
       setIsLoadingBalance(true);
       try {
+        console.log(`CurrencyInput: Fetching balance for ${selectedToken.symbol} (${selectedToken.address})`);
+        
         // Try to get balance using DexService for more accurate results
         if (provider && signer && chainId) {
+          console.log('Using DexService for balance');
           const dexService = new DexService(provider, signer, chainId);
           const balance = await dexService.getTokenBalance(selectedToken, account);
+          console.log(`DexService balance result: ${balance}`);
           setTokenBalance(balance);
         } else {
+          console.log('Using Web3Context for balance');
           // Fallback to Web3Context method
           const balance = await getTokenBalance(selectedToken.address);
+          console.log(`Web3Context balance result: ${balance}`);
           setTokenBalance(balance);
         }
       } catch (error) {
-        console.error('Error fetching token balance:', error);
+        console.error(`Error fetching token balance for ${selectedToken.symbol}:`, error);
         setTokenBalance('0.0000');
       } finally {
         setIsLoadingBalance(false);
@@ -67,6 +80,10 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
     };
 
     fetchBalance();
+    
+    // Refresh balance every 10 seconds
+    const interval = setInterval(fetchBalance, 10000);
+    return () => clearInterval(interval);
   }, [account, selectedToken, getTokenBalance, provider, signer, chainId]);
 
   // Fetch USD value when value or token changes
@@ -187,11 +204,17 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
         <input
           type="text"
           value={value}
-          onChange={handleInputChange}
+            <span className={`font-semibold ml-1 ${
+              isLoadingBalance 
+                ? 'animate-pulse text-gray-300' 
+                : parseFloat(displayBalance) > 0 
+                ? 'text-white' 
+                : 'text-red-400'
+            }`}>
           placeholder="0.0"
           readOnly={readOnly}
           className={`
-            flex-1 bg-transparent text-xl sm:text-2xl lg:text-3xl font-bold text-white
+          {!readOnly && showMaxButton && parseFloat(displayBalance) > 0 && !isLoadingBalance && (
             placeholder-gray-500 focus:outline-none min-w-0
             transition-all duration-200
             ${readOnly ? 'cursor-default' : 'cursor-text'}
@@ -207,6 +230,11 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
             onSelectToken={onTokenChange}
             otherToken={otherToken}
           />
+          {!readOnly && parseFloat(displayBalance) === 0 && !isLoadingBalance && (
+            <span className="text-xs text-red-400 font-medium">
+              No balance
+            </span>
+          )}
         </div>
       </div>
 

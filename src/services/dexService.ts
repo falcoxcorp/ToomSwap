@@ -391,16 +391,55 @@ export class DexService {
   // Get token balance
   async getTokenBalance(token: Token, account: string): Promise<string> {
     try {
+      console.log(`DexService: Getting balance for ${token.symbol} (${token.address}) for account ${account}`);
+      
       if (isNativeToken(token)) {
+        console.log('Getting native token balance');
         const balance = await this.provider.getBalance(account);
-        return ethers.utils.formatEther(balance);
+        const formattedBalance = ethers.utils.formatEther(balance);
+        console.log(`Native balance: ${formattedBalance} ${token.symbol}`);
+        return formattedBalance;
       } else {
+        console.log('Getting ERC20 token balance');
         const tokenContract = this.getTokenContract(token.address);
-        const balance = await tokenContract.balanceOf(account);
-        return ethers.utils.formatUnits(balance, token.decimals);
+        
+        // Verify contract exists and is valid
+        try {
+          const code = await this.provider.getCode(token.address);
+          if (code === '0x') {
+            console.warn(`Token contract ${token.address} does not exist`);
+            return '0.0000';
+          }
+        } catch (codeError) {
+          console.warn(`Could not verify contract ${token.address}:`, codeError);
+        }
+        
+        const [balance, decimals, symbol] = await Promise.all([
+          tokenContract.balanceOf(account),
+          tokenContract.decimals().catch(() => token.decimals),
+          tokenContract.symbol().catch(() => token.symbol)
+        ]);
+        
+        const formattedBalance = ethers.utils.formatUnits(balance, decimals);
+        console.log(`${symbol} balance: ${formattedBalance}`);
+        return formattedBalance;
       }
     } catch (error) {
-      console.error('Error getting token balance:', error);
+      console.error(`Error getting token balance for ${token.symbol}:`, error);
+      
+      // If it's a network error, try alternative method
+      if (error.code === 'NETWORK_ERROR' || error.code === 'TIMEOUT') {
+        console.log('Network error, trying alternative method...');
+        try {
+          if (isNativeToken(token)) {
+            const balance = await this.provider.getBalance(account);
+            return ethers.utils.formatEther(balance);
+          }
+        } catch (altError) {
+          console.error('Alternative method also failed:', altError);
+        }
+      }
+      
       return '0';
     }
   }

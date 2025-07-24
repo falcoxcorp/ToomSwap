@@ -178,9 +178,14 @@ const ConnectWalletButton: React.FC = () => {
             <div className="flex flex-col items-start min-w-0">
               <span className="text-xs text-gray-400 hidden sm:block">{getWalletDisplayName()}</span>
               <span className="truncate">{shortAddress}</span>
-              {balance && (
+              {balance && parseFloat(balance) > 0 && (
                 <span className="text-xs text-gray-400 hidden lg:block">
                   {formatBalance(balance)} SUPRA
+                </span>
+              )}
+              {balance && parseFloat(balance) === 0 && (
+                <span className="text-xs text-red-400 hidden lg:block">
+                  No SUPRA
                 </span>
               )}
             </div>

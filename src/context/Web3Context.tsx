@@ -368,44 +368,61 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Get token balance
   const getTokenBalance = async (tokenAddress: string): Promise<string> => {
-    if (!provider || !account) return '0.0000';
+    if (!provider || !account) {
+      console.log('getTokenBalance: No provider or account');
+      return '0.0000';
+    }
 
     try {
+      console.log(`Getting balance for token ${tokenAddress} for account ${account}`);
+      
       if (tokenAddress === '0x0000000000000000000000000000000000000000') {
         // Native token balance
         const balance = await provider.getBalance(account);
-        return ethers.utils.formatEther(balance);
+        const formattedBalance = ethers.utils.formatEther(balance);
+        console.log(`Native balance: ${formattedBalance}`);
+        return formattedBalance;
       } else {
         // ERC20 token balance
         const tokenContract = new ethers.Contract(
           tokenAddress,
           [
             'function balanceOf(address owner) view returns (uint256)',
-            'function decimals() view returns (uint8)'
+            'function decimals() view returns (uint8)',
+            'function symbol() view returns (string)'
           ],
           provider
         );
         
-        const [balance, decimals] = await Promise.all([
+        const [balance, decimals, symbol] = await Promise.all([
           tokenContract.balanceOf(account),
-          tokenContract.decimals()
+          tokenContract.decimals(),
+          tokenContract.symbol().catch(() => 'UNKNOWN')
         ]);
         
-        return ethers.utils.formatUnits(balance, decimals);
+        const formattedBalance = ethers.utils.formatUnits(balance, decimals);
+        console.log(`${symbol} balance: ${formattedBalance}`);
+        return formattedBalance;
       }
     } catch (error) {
-      console.error('Error getting token balance:', error);
+      console.error(`Error getting token balance for ${tokenAddress}:`, error);
       return '0.0000';
     }
   };
 
   // Update balance
   const updateBalance = async () => {
-    if (!provider || !account) return;
+    if (!provider || !account) {
+      console.log('updateBalance: No provider or account');
+      setBalance('0.0000');
+      return;
+    }
 
     try {
+      console.log(`Updating native balance for account: ${account}`);
       const balance = await provider.getBalance(account);
       const formattedBalance = ethers.utils.formatEther(balance);
+      console.log(`Native balance updated: ${formattedBalance} SUPRA`);
       setBalance(formattedBalance);
     } catch (error) {
       console.error('Error updating balance:', error);
